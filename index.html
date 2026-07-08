@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Assigner</title>
+<link rel="icon" type="image/png" href="taskAssigner_icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* =====================================================================
+     EDIT THIS BLOCK TO CONFIGURE COLORS
+     ===================================================================== */
+  :root {
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  html[data-theme="dark"] {
+    --bg: #1c1c1f;
+    --panel: #26262b;
+    --border: #3a3a40;
+    --text: #eaeaef;
+    --muted: #83838c;
+    --accent: #ff9e42;
+    --accent-soft: rgba(255, 158, 66, 0.14);
+    --btn-bg: #3f7bff;
+    --btn-fg: #ffffff;
+    --danger: #ff6b6b;
+    --success: #58d68d;
+  }
+  html[data-theme="light"] {
+    --bg: #f5f4f1;
+    --panel: #ffffff;
+    --border: #dcdad5;
+    --text: #24231f;
+    --muted: #93918b;
+    --accent: #cc4d0d;
+    --accent-soft: rgba(204, 77, 13, 0.10);
+    --btn-bg: #2f6fed;
+    --btn-fg: #ffffff;
+    --danger: #c0392b;
+    --success: #2e9e5b;
+  }
+  /* ===================================================================== */
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    transition: background 0.2s ease, color 0.2s ease;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 20px 40px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand img { width: 34px; height: 34px; display: block; }
+  .brand h1 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .theme-toggle button {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .theme-toggle button:hover { border-color: var(--accent); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 16px;
+  }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .panel h2 {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 0 0 12px;
+  }
+
+  label.check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    font-size: 0.94rem;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  label.check:hover { background: var(--accent-soft); }
+  label.check input {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 1fr 22px 1fr;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .task-row:last-child { border-bottom: none; }
+
+  .task-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .task-left label.check { padding: 0; flex: 1; min-width: 0; }
+  .task-left label.check span.name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .weight-chip {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+  }
+  .connector {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .result-box {
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .result-box.filled {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--accent-soft);
+  }
+
+  footer.actions {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button.primary, button.secondary {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.92rem;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  button.secondary:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  #status {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  #status.ok { color: var(--success); }
+  #status.err { color: var(--danger); }
+  #status.info { color: var(--accent); }
+
+  #notifyAnywayBtn {
+    display: none;
+  }
+  #notifyAnywayBtn.show {
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <img src="taskAssigner_icon.png" alt="">
+      <h1>Task Assigner</h1>
+    </div>
+    <div class="theme-toggle">
+      <span>Theme</span>
+      <button id="themeBtn" type="button">Toggle</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>People</h2>
+      <div id="peopleList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Tasks &nbsp;/&nbsp; Assigned to</h2>
+      <div id="taskList"></div>
+    </section>
+  </div>
+
+  <footer class="actions">
+    <button class="primary" id="assignBtn" type="button">Assign</button>
+    <button class="secondary" id="notifyAnywayBtn" type="button">Notify group anyway</button>
+    <span id="status"></span>
+  </footer>
+
+</div>
+
+<script>
+/* =============================================================================
+   EDIT THIS BLOCK TO CONFIGURE
+   ============================================================================= */
+
+// ---- PEOPLE ---- (add/remove entries freely)
+const PEOPLE = [
+  { name: "Mehdi T.",      defaultEnabled: true },
+  { name: "Rahil Z.",      defaultEnabled: true },
+  { name: "Marziye B.",    defaultEnabled: true },
+  { name: "Alireza R.",    defaultEnabled: true },
+  { name: "Hamidreza Z.",  defaultEnabled: true },
+  { name: "Zhino N.",      defaultEnabled: true },
+  { name: "Guest 1",       defaultEnabled: false },
+  { name: "Guest 2",       defaultEnabled: false },
+  { name: "Guest 3",       defaultEnabled: false },
+];
+
+// ---- TASKS ---- (add/remove entries freely)
+const TASKS = [
+  { name: "Morning Tea",         weight: 2, defaultEnabled: false },
+  { name: "Morning Dishwashing", weight: 3, defaultEnabled: true },
+  { name: "Sweeping",            weight: 5, defaultEnabled: false },
+  { name: "Noon Tea",            weight: 2, defaultEnabled: true },
+  { name: "Table Cleaning",      weight: 1, defaultEnabled: true },
+  { name: "Noon Dishwashing",    weight: 3, defaultEnabled: true },
+  { name: "Garbage Takeout",     weight: 2, defaultEnabled: true },
+  { name: "Temporary",           weight: 1, defaultEnabled: false },
+];
+
+// The Cloudflare Worker URL from `wrangler deploy` (see README.md).
+// This is safe to be public -- it's just an address, not a secret. The
+// actual bot token lives server-side in the Worker's environment, never
+// here.
+
+//const WORKER_URL = "https://REPLACE-ME.workers.dev";
+const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+
+const DEFAULT_DARK_MODE = true;
+const CONFIG_STORAGE_KEY = "taskAssignerConfig";
+
+/* ============================================================================= */
+
+let isDark = DEFAULT_DARK_MODE;
+
+// --------------------------------------------------------------------- Config
+function buildDefaultConfig() {
+  return {
+    darkMode: DEFAULT_DARK_MODE,
+    people: PEOPLE.map(p => ({ name: p.name, enabled: p.defaultEnabled })),
+    tasks: TASKS.map(t => ({ name: t.name, enabled: t.defaultEnabled, weight: t.weight })),
+  };
+}
+
+function configIsValid(cfg) {
+  if (!cfg || typeof cfg !== "object") return false;
+  if (!Array.isArray(cfg.people) || !Array.isArray(cfg.tasks)) return false;
+  if (typeof cfg.darkMode !== "boolean") return false;
+  if (cfg.people.length !== PEOPLE.length || cfg.tasks.length !== TASKS.length) return false;
+  for (let i = 0; i < PEOPLE.length; i++) {
+    const p = cfg.people[i];
+    if (!p || p.name !== PEOPLE[i].name || typeof p.enabled !== "boolean") return false;
+  }
+  for (let i = 0; i < TASKS.length; i++) {
+    const t = cfg.tasks[i];
+    if (!t || t.name !== TASKS[i].name || typeof t.enabled !== "boolean") return false;
+    if (typeof t.weight !== "number" || !(t.weight > 0)) return false;
+  }
+  return true;
+}
+
+function loadOrInitConfig() {
+  let cfg = null;
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (raw) cfg = JSON.parse(raw);
+  } catch (e) {
+    cfg = null;
+  }
+  if (!configIsValid(cfg)) {
+    cfg = buildDefaultConfig();
+    saveConfig(cfg);
+  }
+  return cfg;
+}
+
+function saveConfig(cfg) {
+  try {
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+  } catch (e) {
+    // Non-fatal (e.g. private browsing mode blocking storage) -- the
+    // app still works, it just won't remember state next time.
+  }
+}
+
+function currentConfigFromUI() {
+  return {
+    darkMode: isDark,
+    people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
+    tasks: TASKS.map((t, i) => ({ name: t.name, enabled: taskChecks[i].checked, weight: taskWeights[i] })),
+  };
+}
+
+function persistCurrentConfig() {
+  saveConfig(currentConfigFromUI());
+}
+
+// --------------------------------------------------------------------- Build UI
+const config = loadOrInitConfig();
+isDark = config.darkMode;
+const taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
+
+const personChecks = [];
+const taskChecks = [];
+const resultBoxes = [];
+
+function buildPeopleList() {
+  const container = document.getElementById("peopleList");
+  PEOPLE.forEach((p, i) => {
+    const label = document.createElement("label");
+    label.className = "check";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = config.people[i].enabled;
+    input.addEventListener("change", persistCurrentConfig);
+    const span = document.createElement("span");
+    span.textContent = p.name;
+    label.appendChild(input);
+    label.appendChild(span);
+    container.appendChild(label);
+    personChecks.push(input);
+  });
+}
+
+function buildTaskList() {
+  const container = document.getElementById("taskList");
+  TASKS.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.className = "task-row";
+
+    const left = document.createElement("div");
+    left.className = "task-left";
+    const label = document.createElement("label");
+    label.className = "check";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = config.tasks[i].enabled;
+    input.addEventListener("change", persistCurrentConfig);
+    const span = document.createElement("span");
+    span.className = "name";
+    span.textContent = t.name;
+    label.appendChild(input);
+    label.appendChild(span);
+    const chip = document.createElement("span");
+    chip.className = "weight-chip";
+    chip.textContent = "×" + taskWeights[i];
+    left.appendChild(label);
+    left.appendChild(chip);
+
+    const connector = document.createElement("div");
+    connector.className = "connector";
+    connector.textContent = "→";
+
+    const result = document.createElement("div");
+    result.className = "result-box";
+    result.textContent = "-- not assigned --";
+
+    row.appendChild(left);
+    row.appendChild(connector);
+    row.appendChild(result);
+    container.appendChild(row);
+
+    taskChecks.push(input);
+    resultBoxes.push(result);
+  });
+}
+
+buildPeopleList();
+buildTaskList();
+
+// --------------------------------------------------------------------- Theming
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+}
+document.getElementById("themeBtn").addEventListener("click", () => {
+  isDark = !isDark;
+  applyTheme();
+  persistCurrentConfig();
+});
+applyTheme();
+
+// --------------------------------------------------------------------- Algorithm
+// NOTE: the actual weighted-balancing algorithm now runs on the SERVER
+// (the Worker), not here. This keeps randomness out of the client's
+// hands entirely -- the browser only ever sends the current
+// configuration (who/what is ticked) and displays whatever the server
+// decides, whether that's a freshly generated assignment or an already-
+// existing one for today (Tehran time).
+
+let lastServerResult = null; // { status, assignment, generatedAt, tehranDate }
+
+function clearResultBoxes() {
+  resultBoxes.forEach(box => {
+    box.textContent = "-- not assigned --";
+    box.classList.remove("filled");
+  });
+}
+
+function renderAssignment(assignment) {
+  clearResultBoxes();
+  const byTask = new Map(assignment.map(r => [r.task, r.person]));
+  TASKS.forEach((t, i) => {
+    const person = byTask.get(t.name);
+    if (person) {
+      resultBoxes[i].textContent = person;
+      resultBoxes[i].classList.add("filled");
+    }
+  });
+}
+
+function formatTehranTime(isoString) {
+  try {
+    return new Date(isoString).toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Tehran", hour: "2-digit", minute: "2-digit",
+    });
+  } catch (e) {
+    return isoString;
+  }
+}
+
+async function callAssignEndpoint(forceNotify) {
+  const enabledPeopleNames = PEOPLE
+    .map((p, i) => ({ name: p.name, enabled: personChecks[i].checked }))
+    .filter(p => p.enabled)
+    .map(p => p.name);
+
+  const enabledTasksPayload = TASKS.map((t, i) => ({
+    name: t.name,
+    weight: taskWeights[i],
+    enabled: taskChecks[i].checked,
+  }));
+
+  if (enabledPeopleNames.length === 0) {
+    setStatus("Select at least one person.", "err");
+    return null;
+  }
+  if (!enabledTasksPayload.some(t => t.enabled)) {
+    setStatus("Select at least one task.", "err");
+    return null;
+  }
+  if (WORKER_URL.includes("REPLACE-ME")) {
+    setStatus("Set WORKER_URL in index.html first (see README).", "err");
+    return null;
+  }
+
+  const payload = {
+    people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
+    tasks: enabledTasksPayload,
+    forceNotify: !!forceNotify,
+  };
+
+  const resp = await fetch(WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(data.error || ("Request failed: " + resp.status));
+  }
+  return data;
+}
+
+async function onAssignClicked() {
+  const assignBtn = document.getElementById("assignBtn");
+  const notifyBtn = document.getElementById("notifyAnywayBtn");
+  notifyBtn.classList.remove("show");
+  assignBtn.disabled = true;
+  setStatus("Checking today's assignments…", "info");
+
+  try {
+    const data = await callAssignEndpoint(false);
+    if (!data) { assignBtn.disabled = false; return; }
+
+    lastServerResult = data;
+    renderAssignment(data.assignment);
+
+    if (data.status === "new") {
+      setStatus("New assignment generated and sent to the group.", "ok");
+    } else if (data.status === "repeat") {
+      const when = formatTehranTime(data.generatedAt);
+      setStatus(
+        `This exact combination was already assigned today at ${when} (Tehran time) -- showing that result. Not sent again.`,
+        "info"
+      );
+      notifyBtn.classList.add("show");
+    }
+  } catch (err) {
+    setStatus("Failed: " + err.message, "err");
+  } finally {
+    assignBtn.disabled = false;
+  }
+}
+
+async function onNotifyAnywayClicked() {
+  const notifyBtn = document.getElementById("notifyAnywayBtn");
+  notifyBtn.disabled = true;
+  setStatus("Posting reminder to the group…", "info");
+  try {
+    const data = await callAssignEndpoint(true);
+    if (!data) { notifyBtn.disabled = false; return; }
+    lastServerResult = data;
+    renderAssignment(data.assignment);
+    setStatus("Reminder posted to the group.", "ok");
+    notifyBtn.classList.remove("show");
+  } catch (err) {
+    setStatus("Failed: " + err.message, "err");
+  } finally {
+    notifyBtn.disabled = false;
+  }
+}
+
+document.getElementById("assignBtn").addEventListener("click", onAssignClicked);
+document.getElementById("notifyAnywayBtn").addEventListener("click", onNotifyAnywayClicked);
+
+function setStatus(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = kind || "";
+}
+</script>
+</body>
+</html>
