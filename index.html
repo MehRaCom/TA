@@ -137,6 +137,7 @@
   label.check input {
     width: 17px;
     height: 17px;
+    flex-shrink: 0;
     accent-color: var(--accent);
     cursor: pointer;
   }
@@ -152,7 +153,14 @@
   .task-row:last-child { border-bottom: none; }
 
   .task-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .task-left label.check { padding: 0; flex: 1; min-width: 0; }
+  .task-left label.check { padding: 0; flex: 1; min-width: 0; gap: 8px; }
+  .task-icon {
+    font-size: 1.05rem;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 1.3em;
+    text-align: center;
+  }
   .task-left label.check span.name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -186,6 +194,37 @@
     color: var(--accent);
     font-weight: 600;
     background: var(--accent-soft);
+  }
+
+  /* Below 600px, three squeezed columns is what was truncating task names
+     and results. Stack each row instead: full-width task line, then a
+     full-width result line right under it -- both get their full text. */
+  @media (max-width: 600px) {
+    .task-row {
+      grid-template-columns: 1fr;
+      row-gap: 4px;
+      padding: 10px 4px;
+    }
+    .connector { display: none; }
+    .task-left label.check span.name {
+      overflow: visible;
+      text-overflow: unset;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .result-box {
+      overflow: visible;
+      text-overflow: unset;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .result-box::before {
+      content: "→ ";
+      color: var(--muted);
+    }
+    .result-box.filled::before {
+      color: var(--accent);
+    }
   }
 
   footer.actions {
@@ -230,6 +269,23 @@
   #notifyAnywayBtn.show {
     display: inline-block;
   }
+
+  .rotation-toggle {
+    font-size: 0.82rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px !important;
+    margin-bottom: 6px;
+  }
+  .task-row.fixed-locked {
+    opacity: 0.6;
+  }
+  .task-row.fixed-locked .task-left label.check {
+    cursor: not-allowed;
+  }
+  .task-row.fixed-locked input[type="checkbox"] {
+    cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -254,6 +310,10 @@
 
     <section class="panel">
       <h2>Tasks &nbsp;/&nbsp; Assigned to</h2>
+      <label class="check rotation-toggle" id="rotationToggleLabel">
+        <input type="checkbox" id="rotationToggle">
+        <span id="rotationToggleText">Use fixed rotation schedule</span>
+      </label>
       <div id="taskList"></div>
     </section>
   </div>
@@ -286,23 +346,66 @@ const PEOPLE = [
 
 // ---- TASKS ---- (add/remove entries freely)
 const TASKS = [
-  { name: "Morning Tea",         weight: 2, defaultEnabled: false },
-  { name: "Morning Dishwashing", weight: 3, defaultEnabled: true },
-  { name: "Sweeping",            weight: 5, defaultEnabled: false },
-  { name: "Noon Tea",            weight: 2, defaultEnabled: true },
-  { name: "Table Cleaning",      weight: 1, defaultEnabled: true },
-  { name: "Noon Dishwashing",    weight: 3, defaultEnabled: true },
-  { name: "Garbage Disposal",    weight: 2, defaultEnabled: true },
-  { name: "Temporary",           weight: 1, defaultEnabled: false },
+  { name: "Morning Tea",         weight: 2, defaultEnabled: false, icon: "☕" },
+  { name: "Morning Dishwashing", weight: 3, defaultEnabled: true,  icon: "🍽️" },
+  { name: "Sweeping",            weight: 5, defaultEnabled: false, icon: "🧹" },
+  { name: "Noon Tea",            weight: 2, defaultEnabled: true,  icon: "☕" },
+  { name: "Table Cleaning",      weight: 1, defaultEnabled: true,  icon: "🧽" },
+  { name: "Noon Dishwashing",    weight: 3, defaultEnabled: true,  icon: "🍽️" },
+  { name: "Garbage Disposal",    weight: 2, defaultEnabled: true,  icon: "🗑️" },
+  { name: "Temporary",           weight: 1, defaultEnabled: false, icon: "📌" },
 ];
+// `icon` is optional -- any task without one falls back to a plain bullet
+// (see buildTaskList below). Not part of the saved config; it's a display
+// detail, not user-toggleable state.
+
+// A distinct identity color per task -- used for its icon badge, weight
+// chip, name text, and its result box when assigned. Any task without an
+// entry here falls back to the general --accent color.
+const TASK_COLORS = {
+  "Morning Tea": "#d9a441",
+  "Morning Dishwashing": "#4fa8d8",
+  "Sweeping": "#7ac74f",
+  "Noon Tea": "#d9a441",
+  "Table Cleaning": "#c77dd2",
+  "Noon Dishwashing": "#4fa8d8",
+  "Garbage Disposal": "#d97757",
+  "Temporary": "#9c9c9c",
+};
+
+// ---- FIXED-ROTATION SCHEDULES ----
+// General-purpose: works for ANY task and ANY person, not just Sweeping.
+// Add a new entry here (task name -> weekday -> person) and, when the
+// "Use fixed rotation" checkbox is on, that task's own checkbox is
+// automatically locked off and resolved from this table instead. A task
+// left out of this object entirely is unaffected either way. Days left
+// out of a given task's table (e.g. Thursday/Friday below) simply get no
+// fixed assignment for that task on those days.
+//
+// IMPORTANT: this table is duplicated in worker/telegram-worker.js, which
+// is the actual AUTHORITATIVE copy used to decide who's really assigned
+// and to seed workload -- this copy here is only used for the on-page
+// preview before you even click Assign. Keep both in sync; if they ever
+// drift, worst case the preview is briefly wrong until Assign is clicked,
+// which corrects it from the server's copy.
+const FIXED_SCHEDULES = {
+  "Sweeping": {
+    Saturday: "Mehdi T.",
+    Sunday: "Rahil Z.",
+    Monday: "Alireza R.",
+    Tuesday: "Marziye B.",
+    Wednesday: "Hamidreza Z.",
+    // Thursday, Friday: intentionally unset
+  },
+  // Add more fixed-rotation tasks the same way, e.g.:
+  // "Garbage Disposal": { Saturday: "Zhino N.", ... },
+};
 
 // The Cloudflare Worker URL from `wrangler deploy` (see README.md).
 // This is safe to be public -- it's just an address, not a secret. The
 // actual bot token lives server-side in the Worker's environment, never
 // here.
-
-//const WORKER_URL = "https://REPLACE-ME.workers.dev";
-const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+const WORKER_URL = "https://REPLACE-ME.workers.dev";
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
@@ -315,6 +418,7 @@ let isDark = DEFAULT_DARK_MODE;
 function buildDefaultConfig() {
   return {
     darkMode: DEFAULT_DARK_MODE,
+    useFixedRotation: false,
     people: PEOPLE.map(p => ({ name: p.name, enabled: p.defaultEnabled })),
     tasks: TASKS.map(t => ({ name: t.name, enabled: t.defaultEnabled, weight: t.weight })),
   };
@@ -324,6 +428,7 @@ function configIsValid(cfg) {
   if (!cfg || typeof cfg !== "object") return false;
   if (!Array.isArray(cfg.people) || !Array.isArray(cfg.tasks)) return false;
   if (typeof cfg.darkMode !== "boolean") return false;
+  if (typeof cfg.useFixedRotation !== "boolean") return false;
   if (cfg.people.length !== PEOPLE.length || cfg.tasks.length !== TASKS.length) return false;
   for (let i = 0; i < PEOPLE.length; i++) {
     const p = cfg.people[i];
@@ -364,6 +469,7 @@ function saveConfig(cfg) {
 function currentConfigFromUI() {
   return {
     darkMode: isDark,
+    useFixedRotation: useFixedRotation,
     people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
     tasks: TASKS.map((t, i) => ({ name: t.name, enabled: taskChecks[i].checked, weight: taskWeights[i] })),
   };
@@ -376,11 +482,17 @@ function persistCurrentConfig() {
 // --------------------------------------------------------------------- Build UI
 const config = loadOrInitConfig();
 isDark = config.darkMode;
+let useFixedRotation = config.useFixedRotation;
 const taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
+
+function tehranWeekdayName(date) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tehran", weekday: "long" }).format(date);
+}
 
 const personChecks = [];
 const taskChecks = [];
 const resultBoxes = [];
+const taskRowEls = [];
 
 function buildPeopleList() {
   const container = document.getElementById("peopleList");
@@ -406,10 +518,19 @@ function buildTaskList() {
     const row = document.createElement("div");
     row.className = "task-row";
 
+    const color = TASK_COLORS[t.name] || null;
+
     const left = document.createElement("div");
     left.className = "task-left";
     const label = document.createElement("label");
     label.className = "check";
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "task-icon";
+    iconSpan.textContent = t.icon || "•";
+    if (color) {
+      iconSpan.style.background = color + "26"; // ~15% alpha badge
+      iconSpan.style.borderRadius = "6px";
+    }
     const input = document.createElement("input");
     input.type = "checkbox";
     input.checked = config.tasks[i].enabled;
@@ -417,11 +538,17 @@ function buildTaskList() {
     const span = document.createElement("span");
     span.className = "name";
     span.textContent = t.name;
+    if (color) span.style.color = color;
     label.appendChild(input);
+    label.appendChild(iconSpan);
     label.appendChild(span);
     const chip = document.createElement("span");
     chip.className = "weight-chip";
     chip.textContent = "×" + taskWeights[i];
+    if (color) {
+      chip.style.color = color;
+      chip.style.background = color + "22";
+    }
     left.appendChild(label);
     left.appendChild(chip);
 
@@ -438,13 +565,75 @@ function buildTaskList() {
     row.appendChild(result);
     container.appendChild(row);
 
+
     taskChecks.push(input);
     resultBoxes.push(result);
+    taskRowEls.push(row);
+  });
+}
+
+// --------------------------------------------------------------- Fixed rotation
+// Enforces the mutual exclusion for EVERY task that has a fixed schedule
+// entry (not just one hardcoded task): while the rotation is on, each
+// such task's own checkbox is locked off (forced unchecked, disabled)
+// since there's nothing left for the user to decide about it. Also fills
+// in a same-page PREVIEW of who that resolves to today, purely for
+// display -- the actual authoritative resolution happens server-side
+// when Assign is clicked (see worker/telegram-worker.js).
+function applyFixedRotationUI() {
+  const weekday = tehranWeekdayName(new Date());
+
+  TASKS.forEach((t, i) => {
+    const schedule = FIXED_SCHEDULES[t.name];
+    if (!schedule) return; // this task has no fixed schedule -- untouched
+
+    const checkbox = taskChecks[i];
+    const result = resultBoxes[i];
+    const color = TASK_COLORS[t.name] || null;
+
+    if (useFixedRotation) {
+      checkbox.checked = false;
+      checkbox.disabled = true;
+      taskRowEls[i].classList.add("fixed-locked");
+
+      const person = schedule[weekday];
+      if (person) {
+        result.textContent = person + " (rotation)";
+        result.classList.add("filled");
+        if (color) result.style.color = color;
+      } else {
+        result.textContent = "no rotation today";
+        result.classList.remove("filled");
+        result.style.color = "";
+      }
+    } else {
+      checkbox.disabled = false;
+      taskRowEls[i].classList.remove("fixed-locked");
+      // Restore whatever the saved config says for this task's own checkbox
+      checkbox.checked = config.tasks[i].enabled;
+      result.textContent = "-- not assigned --";
+      result.classList.remove("filled");
+      result.style.color = "";
+    }
   });
 }
 
 buildPeopleList();
 buildTaskList();
+
+const rotationToggle = document.getElementById("rotationToggle");
+rotationToggle.checked = useFixedRotation;
+rotationToggle.addEventListener("change", () => {
+  useFixedRotation = rotationToggle.checked;
+  applyFixedRotationUI();
+  persistCurrentConfig();
+});
+const fixedTaskNames = Object.keys(FIXED_SCHEDULES);
+if (fixedTaskNames.length > 0) {
+  document.getElementById("rotationToggleText").textContent =
+    "Use fixed rotation for: " + fixedTaskNames.join(", ");
+}
+applyFixedRotationUI();
 
 // --------------------------------------------------------------------- Theming
 function applyTheme() {
@@ -471,17 +660,20 @@ function clearResultBoxes() {
   resultBoxes.forEach(box => {
     box.textContent = "-- not assigned --";
     box.classList.remove("filled");
+    box.style.color = "";
   });
 }
 
 function renderAssignment(assignment) {
   clearResultBoxes();
-  const byTask = new Map(assignment.map(r => [r.task, r.person]));
+  const byTask = new Map(assignment.map(r => [r.task, r]));
   TASKS.forEach((t, i) => {
-    const person = byTask.get(t.name);
-    if (person) {
-      resultBoxes[i].textContent = person;
+    const entry = byTask.get(t.name);
+    if (entry) {
+      resultBoxes[i].textContent = entry.person + (entry.fixed ? " (rotation)" : "");
       resultBoxes[i].classList.add("filled");
+      const color = TASK_COLORS[t.name];
+      if (color) resultBoxes[i].style.color = color;
     }
   });
 }
@@ -525,6 +717,7 @@ async function callAssignEndpoint(forceNotify) {
     people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
     tasks: enabledTasksPayload,
     forceNotify: !!forceNotify,
+    useFixedRotation: useFixedRotation,
   };
 
   const resp = await fetch(WORKER_URL, {
