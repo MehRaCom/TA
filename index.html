@@ -286,6 +286,12 @@
   .task-row.fixed-locked input[type="checkbox"] {
     cursor: not-allowed;
   }
+  label.check.fixed-locked {
+    opacity: 0.6;
+  }
+  label.check.fixed-locked input[type="checkbox"] {
+    cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -405,8 +411,7 @@ const FIXED_SCHEDULES = {
 // This is safe to be public -- it's just an address, not a secret. The
 // actual bot token lives server-side in the Worker's environment, never
 // here.
-// const WORKER_URL = "https://REPLACE-ME.workers.dev";
-const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+const WORKER_URL = "https://REPLACE-ME.workers.dev";
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
@@ -471,7 +476,13 @@ function currentConfigFromUI() {
   return {
     darkMode: isDark,
     useFixedRotation: useFixedRotation,
-    people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
+    people: PEOPLE.map((p, i) => {
+      const isLocked = personChecks[i].disabled;
+      const enabled = isLocked
+        ? (fixedLockedPersonPriorState[p.name] ?? personChecks[i].checked)
+        : personChecks[i].checked;
+      return { name: p.name, enabled };
+    }),
     tasks: TASKS.map((t, i) => ({ name: t.name, enabled: taskChecks[i].checked, weight: taskWeights[i] })),
   };
 }
@@ -491,9 +502,16 @@ function tehranWeekdayName(date) {
 }
 
 const personChecks = [];
+const personRowEls = [];
 const taskChecks = [];
 const resultBoxes = [];
 const taskRowEls = [];
+
+// Remembers each fixed-rotation person's REAL checkbox preference while
+// their checkbox is forced on/locked -- without this, persisting config
+// while they're locked would overwrite their true preference with the
+// temporary forced value. Populated/cleared in applyFixedRotationUI.
+let fixedLockedPersonPriorState = {};
 
 function buildPeopleList() {
   const container = document.getElementById("peopleList");
@@ -510,6 +528,7 @@ function buildPeopleList() {
     label.appendChild(span);
     container.appendChild(label);
     personChecks.push(input);
+    personRowEls.push(label); // the label itself is the "row" for people
   });
 }
 
@@ -615,6 +634,43 @@ function applyFixedRotationUI() {
       result.textContent = "-- not assigned --";
       result.classList.remove("filled");
       result.style.color = "";
+    }
+  });
+
+  // ---- People: force-include and lock whoever today's rotation covers ----
+  // This is the fix for the dedupe-bypass bug: if a rotation person's
+  // People checkbox could be freely unticked, that changed the day's
+  // "configuration" fingerprint and let someone force a fresh reroll by
+  // simply excluding them. Locking them ON here closes that off, and also
+  // guarantees the "seed their workload" fairness behavior always applies
+  // instead of only when the user happened to leave them ticked.
+  const lockedPersonNames = new Set();
+  if (useFixedRotation) {
+    for (const taskName of Object.keys(FIXED_SCHEDULES)) {
+      const person = FIXED_SCHEDULES[taskName][weekday];
+      if (person) lockedPersonNames.add(person);
+    }
+  }
+
+  PEOPLE.forEach((p, i) => {
+    const checkbox = personChecks[i];
+    const row = personRowEls[i];
+
+    if (lockedPersonNames.has(p.name)) {
+      if (!(p.name in fixedLockedPersonPriorState)) {
+        fixedLockedPersonPriorState[p.name] = checkbox.checked; // remember real preference, once
+      }
+      checkbox.checked = true;
+      checkbox.disabled = true;
+      row.classList.add("fixed-locked");
+      row.title = "Included today: part of the fixed rotation";
+    } else if (checkbox.disabled) {
+      // Was locked before, now unlocking -- restore their real preference
+      checkbox.checked = fixedLockedPersonPriorState[p.name] ?? checkbox.checked;
+      delete fixedLockedPersonPriorState[p.name];
+      checkbox.disabled = false;
+      row.classList.remove("fixed-locked");
+      row.title = "";
     }
   });
 }
