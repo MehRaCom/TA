@@ -29,6 +29,8 @@
     --btn-fg: #ffffff;
     --danger: #ff6b6b;
     --success: #58d68d;
+    --rotation-accent: #ff5c5c;
+    --rotation-accent-soft: rgba(255, 92, 92, 0.14);
   }
   html[data-theme="light"] {
     --bg: #f5f4f1;
@@ -42,6 +44,8 @@
     --btn-fg: #ffffff;
     --danger: #c0392b;
     --success: #2e9e5b;
+    --rotation-accent: #d1392e;
+    --rotation-accent-soft: rgba(209, 57, 46, 0.08);
   }
   /* ===================================================================== */
 
@@ -271,11 +275,23 @@
   }
 
   .rotation-toggle {
-    font-size: 0.82rem;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 10px !important;
-    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--rotation-accent);
+    background: var(--rotation-accent-soft);
+    border: 1.5px solid var(--rotation-accent);
+    border-radius: 10px;
+    padding: 11px 12px !important;
+    margin-bottom: 14px;
+  }
+  label.check.rotation-toggle:hover {
+    background: var(--rotation-accent-soft);
+  }
+  .rotation-toggle input[type="checkbox"] {
+    accent-color: var(--rotation-accent);
   }
   .task-row.fixed-locked {
     opacity: 0.6;
