@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Assigner — Admin</title>
+<link rel="icon" type="image/png" href="taskAssigner_icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --bg: #1c1c1f;
+    --panel: #26262b;
+    --border: #3a3a40;
+    --text: #eaeaef;
+    --muted: #83838c;
+    --accent: #ff9e42;
+    --accent-soft: rgba(255, 158, 66, 0.14);
+    --danger: #ff5c5c;
+    --danger-soft: rgba(255, 92, 92, 0.14);
+    --success: #58d68d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .panel h2 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel h2 .hint { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+
+  input[type="text"], input[type="password"], input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+  }
+  input[type="color"] {
+    width: 40px; height: 34px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); cursor: pointer; padding: 2px;
+  }
+  select {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 8px; font-family: var(--font-body); font-size: 0.85rem;
+  }
+  label.check { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+  input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .row:last-child { border-bottom: none; }
+  .row input[type="text"].name-field { flex: 1; min-width: 140px; }
+  .row input[type="number"].weight-field { width: 64px; }
+
+  button {
+    font-family: var(--font-body);
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  button.add-btn { background: var(--accent-soft); color: var(--accent); }
+  button.remove-btn { background: var(--danger-soft); color: var(--danger); padding: 6px 10px; }
+  button.primary { background: var(--accent); color: #1c1c1f; padding: 12px 22px; font-size: 0.95rem; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .fixed-schedule-task { margin-bottom: 14px; }
+  .fixed-schedule-task > .task-label { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .weekday-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .weekday-grid label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 3px; }
+  .weekday-grid select { width: 100%; }
+
+  #authBar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  #authBar input { flex: 1; min-width: 180px; }
+
+  #status {
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  #status.show { display: block; }
+  #status.ok { background: rgba(88,214,141,0.12); color: var(--success); }
+  #status.err { background: var(--danger-soft); color: var(--danger); }
+  #status.info { background: var(--accent-soft); color: var(--accent); }
+
+  .footer-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Task Assigner — Admin</h1>
+  <p class="subtitle">Edit people, tasks, fixed rotation, and appearance. Changes apply immediately — no code, no redeploy.</p>
+
+  <div id="authBar">
+    <input type="password" id="passwordInput" placeholder="Admin password (needed only to save)">
+  </div>
+
+  <div id="status"></div>
+
+  <div class="panel">
+    <h2>People <span class="hint">who can be assigned tasks</span></h2>
+    <div id="peopleRows"></div>
+    <button class="add-btn" id="addPersonBtn" type="button">+ Add Person</button>
+  </div>
+
+  <div class="panel">
+    <h2>Tasks <span class="hint">name, weight, icon (emoji), color, default-ticked</span></h2>
+    <div id="taskRows"></div>
+    <button class="add-btn" id="addTaskBtn" type="button">+ Add Task</button>
+    <p class="subtitle" style="margin-top:10px;">
+      Icon note: only ☕ 🍽️ 🧹 🧽 🗑️ 📌 are pre-rendered for the Telegram image card.
+      Other emoji still work on the website, but show without an icon in the Telegram card.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Fixed Rotation <span class="hint">per task, per weekday</span></h2>
+    <div id="fixedScheduleRows"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Appearance</h2>
+    <div class="row">
+      <label style="min-width:120px;">Card title text</label>
+      <input type="text" id="cardTitleInput" class="name-field">
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button class="primary" id="saveBtn" type="button">Save Changes</button>
+    <button id="reloadBtn" type="button">Reload from server</button>
+  </div>
+</div>
+
+<script>
+// const WORKER_URL = "https://REPLACE-ME.workers.dev";
+const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+
+const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { cardTitle: "Task Assignment" } };
+
+function setStatus(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = "show " + (kind || "");
+}
+
+// ---------------------------------------------------------------- People
+function renderPeople() {
+  const container = document.getElementById("peopleRows");
+  container.innerHTML = "";
+  state.people.forEach((p, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "name-field";
+    nameInput.value = p.name;
+    nameInput.addEventListener("input", () => { p.name = nameInput.value; renderFixedSchedules(); });
+
+    const enabledLabel = document.createElement("label");
+    enabledLabel.className = "check";
+    const enabledCb = document.createElement("input");
+    enabledCb.type = "checkbox";
+    enabledCb.checked = p.defaultEnabled;
+    enabledCb.addEventListener("change", () => { p.defaultEnabled = enabledCb.checked; });
+    enabledLabel.appendChild(enabledCb);
+    enabledLabel.appendChild(document.createTextNode("default-ticked"));
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove-btn";
+    removeBtn.type = "button";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => {
+      state.people.splice(i, 1);
+      renderPeople();
+      renderFixedSchedules();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(enabledLabel);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  });
+}
+
+document.getElementById("addPersonBtn").addEventListener("click", () => {
+  state.people.push({ name: "New Person", defaultEnabled: false });
+  renderPeople();
+  renderFixedSchedules();
+});
+
+// ---------------------------------------------------------------- Tasks
+function renderTasks() {
+  const container = document.getElementById("taskRows");
+  container.innerHTML = "";
+  state.tasks.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "name-field";
+    nameInput.value = t.name;
+    nameInput.addEventListener("input", () => { t.name = nameInput.value; renderFixedSchedules(); });
+
+    const weightInput = document.createElement("input");
+    weightInput.type = "number";
+    weightInput.className = "weight-field";
+    weightInput.min = "1";
+    weightInput.value = t.weight;
+    weightInput.title = "Weight";
+    weightInput.addEventListener("input", () => { t.weight = parseFloat(weightInput.value) || 1; });
+
+    const iconInput = document.createElement("input");
+    iconInput.type = "text";
+    iconInput.style.width = "48px";
+    iconInput.value = t.icon || "";
+    iconInput.title = "Icon (emoji)";
+    iconInput.addEventListener("input", () => { t.icon = iconInput.value; });
+
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = t.color || "#ff9e42";
+    colorInput.title = "Color";
+    colorInput.addEventListener("input", () => { t.color = colorInput.value; });
+
+    const enabledLabel = document.createElement("label");
+    enabledLabel.className = "check";
+    const enabledCb = document.createElement("input");
+    enabledCb.type = "checkbox";
+    enabledCb.checked = t.defaultEnabled;
+    enabledCb.addEventListener("change", () => { t.defaultEnabled = enabledCb.checked; });
+    enabledLabel.appendChild(enabledCb);
+    enabledLabel.appendChild(document.createTextNode("default"));
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove-btn";
+    removeBtn.type = "button";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => {
+      const removedName = t.name;
+      state.tasks.splice(i, 1);
+      delete state.fixedSchedules[removedName];
+      renderTasks();
+      renderFixedSchedules();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(weightInput);
+    row.appendChild(iconInput);
+    row.appendChild(colorInput);
+    row.appendChild(enabledLabel);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  });
+}
+
+document.getElementById("addTaskBtn").addEventListener("click", () => {
+  state.tasks.push({ name: "New Task", weight: 1, defaultEnabled: false, icon: "", color: "#9c9c9c" });
+  renderTasks();
+  renderFixedSchedules();
+});
+
+// ---------------------------------------------------------------- Fixed Rotation
+function renderFixedSchedules() {
+  const container = document.getElementById("fixedScheduleRows");
+  container.innerHTML = "";
+  if (state.tasks.length === 0) {
+    container.textContent = "Add a task first.";
+    return;
+  }
+  state.tasks.forEach((t) => {
+    const block = document.createElement("div");
+    block.className = "fixed-schedule-task";
+
+    const label = document.createElement("div");
+    label.className = "task-label";
+    label.textContent = t.name;
+    block.appendChild(label);
+
+    const grid = document.createElement("div");
+    grid.className = "weekday-grid";
+
+    const schedule = state.fixedSchedules[t.name] || {};
+
+    WEEKDAYS.forEach((day) => {
+      const cell = document.createElement("div");
+      const dayLabel = document.createElement("label");
+      dayLabel.textContent = day;
+      const select = document.createElement("select");
+
+      const noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "— none —";
+      select.appendChild(noneOpt);
+
+      state.people.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.name;
+        opt.textContent = p.name;
+        if (schedule[day] === p.name) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => {
+        if (!state.fixedSchedules[t.name]) state.fixedSchedules[t.name] = {};
+        if (select.value) {
+          state.fixedSchedules[t.name][day] = select.value;
+        } else {
+          delete state.fixedSchedules[t.name][day];
+        }
+        if (Object.keys(state.fixedSchedules[t.name]).length === 0) {
+          delete state.fixedSchedules[t.name];
+        }
+      });
+
+      cell.appendChild(dayLabel);
+      cell.appendChild(select);
+      grid.appendChild(cell);
+    });
+
+    block.appendChild(grid);
+    container.appendChild(block);
+  });
+}
+
+// ---------------------------------------------------------------- Load / Save
+function renderAll() {
+  renderPeople();
+  renderTasks();
+  renderFixedSchedules();
+  document.getElementById("cardTitleInput").value = state.appearance.cardTitle || "Task Assignment";
+}
+
+async function loadConfig() {
+  setStatus("Loading current config…", "info");
+  try {
+    const resp = await fetch(WORKER_URL + "/config");
+    if (!resp.ok) throw new Error("Request failed: " + resp.status);
+    const cfg = await resp.json();
+    state = {
+      people: cfg.people || [],
+      tasks: cfg.tasks || [],
+      fixedSchedules: cfg.fixedSchedules || {},
+      appearance: cfg.appearance || { cardTitle: "Task Assignment" },
+    };
+    renderAll();
+    setStatus("Loaded current config.", "ok");
+  } catch (err) {
+    setStatus("Failed to load config: " + err.message, "err");
+  }
+}
+
+async function saveConfigToServer() {
+  const password = document.getElementById("passwordInput").value;
+  if (!password) {
+    setStatus("Enter the admin password first.", "err");
+    return;
+  }
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.disabled = true;
+  setStatus("Saving…", "info");
+
+  const payload = {
+    people: state.people,
+    tasks: state.tasks,
+    fixedSchedules: state.fixedSchedules,
+    appearance: { cardTitle: document.getElementById("cardTitleInput").value || "Task Assignment" },
+  };
+
+  try {
+    const resp = await fetch(WORKER_URL + "/config", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + password,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || ("Request failed: " + resp.status));
+    setStatus("Saved. Changes are live immediately.", "ok");
+  } catch (err) {
+    setStatus("Failed to save: " + err.message, "err");
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+document.getElementById("saveBtn").addEventListener("click", saveConfigToServer);
+document.getElementById("reloadBtn").addEventListener("click", loadConfig);
+
+loadConfig();
+</script>
+</body>
+</html>

@@ -350,86 +350,27 @@
 
 <script>
 /* =============================================================================
-   EDIT THIS BLOCK TO CONFIGURE
+   PEOPLE, TASKS, TASK_COLORS, and FIXED_SCHEDULES are no longer hardcoded
+   here -- they're fetched from the Worker's central config (see
+   worker/config.js), which is edited via admin.html. This is populated by
+   init() below, before anything else runs. Only WORKER_URL and the a few
+   local-only settings stay as plain constants.
    ============================================================================= */
 
-// ---- PEOPLE ---- (add/remove entries freely)
-const PEOPLE = [
-  { name: "Mehdi T.",      defaultEnabled: true },
-  { name: "Rahil Z.",      defaultEnabled: true },
-  { name: "Marziye B.",    defaultEnabled: true },
-  { name: "Alireza R.",    defaultEnabled: true },
-  { name: "Hamidreza Z.",  defaultEnabled: true },
-  { name: "Zhino N.",      defaultEnabled: true },
-  { name: "Guest 1",       defaultEnabled: false },
-  { name: "Guest 2",       defaultEnabled: false },
-  { name: "Guest 3",       defaultEnabled: false },
-];
+let PEOPLE = [];
+let TASKS = [];
+let TASK_COLORS = {};
+let FIXED_SCHEDULES = {};
 
-// ---- TASKS ---- (add/remove entries freely)
-const TASKS = [
-  { name: "Morning Tea",         weight: 2, defaultEnabled: false, icon: "☕" },
-  { name: "Morning Dishwashing", weight: 3, defaultEnabled: true,  icon: "🍽️" },
-  { name: "Sweeping",            weight: 5, defaultEnabled: false, icon: "🧹" },
-  { name: "Noon Tea",            weight: 2, defaultEnabled: true,  icon: "☕" },
-  { name: "Table Cleaning",      weight: 1, defaultEnabled: true,  icon: "🧽" },
-  { name: "Noon Dishwashing",    weight: 3, defaultEnabled: true,  icon: "🍽️" },
-  { name: "Garbage Disposal",    weight: 2, defaultEnabled: true,  icon: "🗑️" },
-  { name: "Temporary",           weight: 1, defaultEnabled: false, icon: "📌" },
-];
-// `icon` is optional -- any task without one falls back to a plain bullet
-// (see buildTaskList below). Not part of the saved config; it's a display
-// detail, not user-toggleable state.
-
-// A distinct identity color per task -- used for its icon badge, weight
-// chip, name text, and its result box when assigned. Any task without an
-// entry here falls back to the general --accent color.
-const TASK_COLORS = {
-  "Morning Tea": "#d9a441",
-  "Morning Dishwashing": "#4fa8d8",
-  "Sweeping": "#7ac74f",
-  "Noon Tea": "#d9a441",
-  "Table Cleaning": "#c77dd2",
-  "Noon Dishwashing": "#4fa8d8",
-  "Garbage Disposal": "#d97757",
-  "Temporary": "#9c9c9c",
-};
-
-// ---- FIXED-ROTATION SCHEDULES ----
-// General-purpose: works for ANY task and ANY person, not just Sweeping.
-// Add a new entry here (task name -> weekday -> person) and, when the
-// "Use fixed rotation" checkbox is on, that task's own checkbox is
-// automatically locked off and resolved from this table instead. A task
-// left out of this object entirely is unaffected either way. Days left
-// out of a given task's table (e.g. Thursday/Friday below) simply get no
-// fixed assignment for that task on those days.
-//
-// IMPORTANT: this table is duplicated in worker/telegram-worker.js, which
-// is the actual AUTHORITATIVE copy used to decide who's really assigned
-// and to seed workload -- this copy here is only used for the on-page
-// preview before you even click Assign. Keep both in sync; if they ever
-// drift, worst case the preview is briefly wrong until Assign is clicked,
-// which corrects it from the server's copy.
-const FIXED_SCHEDULES = {
-  "Sweeping": {
-    Saturday: "Mehdi T.",
-    Sunday: "Rahil Z.",
-    Monday: "Alireza R.",
-    Tuesday: "Marziye B.",
-    Wednesday: "Hamidreza Z.",
-    // Thursday, Friday: intentionally unset
-  },
-  // Add more fixed-rotation tasks the same way, e.g.:
-  // "Garbage Disposal": { Saturday: "Zhino N.", ... },
-};
 
 // The Cloudflare Worker URL from `wrangler deploy` (see README.md).
 // This is safe to be public -- it's just an address, not a secret. The
 // actual bot token lives server-side in the Worker's environment, never
 // here.
 
-const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
+const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
@@ -510,10 +451,11 @@ function persistCurrentConfig() {
 }
 
 // --------------------------------------------------------------------- Build UI
-const config = loadOrInitConfig();
-isDark = config.darkMode;
-let useFixedRotation = config.useFixedRotation;
-const taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
+// config/useFixedRotation/taskWeights are populated inside init() below,
+// once PEOPLE/TASKS have actually been fetched from the server.
+let config = null;
+let useFixedRotation = false;
+let taskWeights = [];
 
 function tehranWeekdayName(date) {
   return new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tehran", weekday: "long" }).format(date);
@@ -693,22 +635,12 @@ function applyFixedRotationUI() {
   });
 }
 
-buildPeopleList();
-buildTaskList();
-
 const rotationToggle = document.getElementById("rotationToggle");
-rotationToggle.checked = useFixedRotation;
 rotationToggle.addEventListener("change", () => {
   useFixedRotation = rotationToggle.checked;
   applyFixedRotationUI();
   persistCurrentConfig();
 });
-const fixedTaskNames = Object.keys(FIXED_SCHEDULES);
-if (fixedTaskNames.length > 0) {
-  document.getElementById("rotationToggleText").textContent =
-    "Use fixed rotation for: " + fixedTaskNames.join(", ");
-}
-applyFixedRotationUI();
 
 // --------------------------------------------------------------------- Theming
 function applyTheme() {
@@ -719,11 +651,79 @@ document.getElementById("themeBtn").addEventListener("click", () => {
   applyTheme();
   persistCurrentConfig();
 });
+// Apply a reasonable default theme immediately, so the page doesn't flash
+// the wrong theme while waiting on the config fetch below -- init() will
+// correct it to the real saved preference once loaded.
+isDark = DEFAULT_DARK_MODE;
 applyTheme();
+
+// --------------------------------------------------------------------- Init
+// Fetches the central config from the Worker (people, tasks, colors,
+// icons, fixed rotation) BEFORE building anything -- this is what
+// replaces the old hardcoded PEOPLE/TASKS/FIXED_SCHEDULES arrays. See
+// worker/config.js and admin.html for where this data actually lives and
+// how it's edited.
+async function fetchServerConfig() {
+  const resp = await fetch(WORKER_URL + "/config");
+  if (!resp.ok) throw new Error("Failed to load configuration (" + resp.status + ")");
+  return await resp.json();
+}
+
+async function init() {
+  const assignBtn = document.getElementById("assignBtn");
+  assignBtn.disabled = true;
+
+  if (WORKER_URL.includes("REPLACE-ME")) {
+    setStatus("Set WORKER_URL in index.html first (see README).", "err");
+    return;
+  }
+
+  setStatus("Loading configuration…", "info");
+  let serverCfg;
+  try {
+    serverCfg = await fetchServerConfig();
+  } catch (err) {
+    setStatus("Could not load configuration: " + err.message, "err");
+    return;
+  }
+
+  PEOPLE = (serverCfg.people || []).map(p => ({ name: p.name, defaultEnabled: p.defaultEnabled }));
+  TASKS = (serverCfg.tasks || []).map(t => ({ name: t.name, weight: t.weight, defaultEnabled: t.defaultEnabled, icon: t.icon }));
+  TASK_COLORS = {};
+  (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
+  FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
+
+  if (PEOPLE.length === 0 || TASKS.length === 0) {
+    setStatus("Server returned an empty configuration -- check admin.html.", "err");
+    return;
+  }
+
+  config = loadOrInitConfig();
+  isDark = config.darkMode;
+  useFixedRotation = config.useFixedRotation;
+  taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
+
+  buildPeopleList();
+  buildTaskList();
+
+  rotationToggle.checked = useFixedRotation;
+  const fixedTaskNames = Object.keys(FIXED_SCHEDULES);
+  document.getElementById("rotationToggleText").textContent = fixedTaskNames.length > 0
+    ? "Use fixed rotation for: " + fixedTaskNames.join(", ")
+    : "Use fixed rotation (none configured yet)";
+  applyFixedRotationUI();
+  applyTheme();
+
+  setStatus("", "");
+  assignBtn.disabled = false;
+}
+
+init();
 
 // --------------------------------------------------------------------- Algorithm
 // NOTE: the actual weighted-balancing algorithm now runs on the SERVER
 // (the Worker), not here. This keeps randomness out of the client's
+
 // hands entirely -- the browser only ever sends the current
 // configuration (who/what is ticked) and displays whatever the server
 // decides, whether that's a freshly generated assignment or an already-
@@ -795,7 +795,7 @@ async function callAssignEndpoint(forceNotify) {
     useFixedRotation: useFixedRotation,
   };
 
-  const resp = await fetch(WORKER_URL, {
+  const resp = await fetch(WORKER_URL + "/assign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
