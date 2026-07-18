@@ -91,6 +91,40 @@
   .row input[type="text"].name-field { flex: 1; min-width: 140px; }
   .row input[type="number"].weight-field { width: 64px; }
 
+  .presence-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 0 12px 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .presence-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-right: 2px;
+  }
+  label.presence-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 9px 3px 7px;
+    cursor: pointer;
+  }
+  label.presence-chip input[type="checkbox"] { width: 13px; height: 13px; }
+  label.presence-chip:has(input:checked),
+  label.presence-chip.checked {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
   button {
     font-family: var(--font-body);
     font-weight: 600;
@@ -188,7 +222,6 @@
 <script>
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
-
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { cardTitle: "Task Assignment" } };
@@ -236,6 +269,45 @@ function renderPeople() {
     row.appendChild(enabledLabel);
     row.appendChild(removeBtn);
     container.appendChild(row);
+
+    // ---- Presence days (automated run only -- doesn't affect the manual
+    // Assign button on the website at all) ----
+    const presenceRow = document.createElement("div");
+    presenceRow.className = "presence-row";
+
+    const presenceLabel = document.createElement("span");
+    presenceLabel.className = "presence-label";
+    presenceLabel.textContent = "Present (automated run):";
+    presenceRow.appendChild(presenceLabel);
+
+    // Unset presenceDays means "present every day" -- reflect that as all
+    // 7 toggled on, so the UI never implies a restriction that isn't real.
+    const currentPresence = p.presenceDays || WEEKDAYS.slice();
+
+    WEEKDAYS.forEach((day) => {
+      const chipLabel = document.createElement("label");
+      chipLabel.className = "presence-chip";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = currentPresence.includes(day);
+      if (cb.checked) chipLabel.classList.add("checked");
+      cb.addEventListener("change", () => {
+        const base = p.presenceDays || WEEKDAYS.slice();
+        if (cb.checked) {
+          if (!base.includes(day)) base.push(day);
+        } else {
+          const idx = base.indexOf(day);
+          if (idx !== -1) base.splice(idx, 1);
+        }
+        p.presenceDays = base;
+        chipLabel.classList.toggle("checked", cb.checked);
+      });
+      chipLabel.appendChild(cb);
+      chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));
+      presenceRow.appendChild(chipLabel);
+    });
+
+    container.appendChild(presenceRow);
   });
 }
 

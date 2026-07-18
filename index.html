@@ -367,10 +367,8 @@ let FIXED_SCHEDULES = {};
 // This is safe to be public -- it's just an address, not a secret. The
 // actual bot token lives server-side in the Worker's environment, never
 // here.
-
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
-
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
@@ -663,41 +661,53 @@ applyTheme();
 // replaces the old hardcoded PEOPLE/TASKS/FIXED_SCHEDULES arrays. See
 // worker/config.js and admin.html for where this data actually lives and
 // how it's edited.
+//
+// Stale-while-revalidate: if a previous visit's config is cached in
+// localStorage, render from it IMMEDIATELY (no network wait at all) and
+// refresh the cache silently in the background for next time. This never
+// touches the already-rendered UI mid-session -- a background refresh
+// only updates what's used on the NEXT load, so it can't yank a
+// checkbox out from under someone mid-interaction. First-ever visit (no
+// cache yet) falls back to waiting on the network, same as before.
+const SERVER_CONFIG_CACHE_KEY = "taskAssignerServerConfigCache";
+
+function readCachedServerConfig() {
+  try {
+    const raw = localStorage.getItem(SERVER_CONFIG_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.people) || !Array.isArray(parsed.tasks)) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeCachedServerConfig(serverCfg) {
+  try {
+    localStorage.setItem(SERVER_CONFIG_CACHE_KEY, JSON.stringify(serverCfg));
+  } catch (e) {
+    // Non-fatal (e.g. private browsing) -- just means next load waits on
+    // the network again instead of rendering instantly from cache.
+  }
+}
+
 async function fetchServerConfig() {
   const resp = await fetch(WORKER_URL + "/config");
   if (!resp.ok) throw new Error("Failed to load configuration (" + resp.status + ")");
   return await resp.json();
 }
 
-async function init() {
-  const assignBtn = document.getElementById("assignBtn");
-  assignBtn.disabled = true;
-
-  if (WORKER_URL.includes("REPLACE-ME")) {
-    setStatus("Set WORKER_URL in index.html first (see README).", "err");
-    return;
-  }
-
-  setStatus("Loading configuration…", "info");
-  let serverCfg;
-  try {
-    serverCfg = await fetchServerConfig();
-  } catch (err) {
-    setStatus("Could not load configuration: " + err.message, "err");
-    return;
-  }
-
+function applyServerConfig(serverCfg) {
   PEOPLE = (serverCfg.people || []).map(p => ({ name: p.name, defaultEnabled: p.defaultEnabled }));
   TASKS = (serverCfg.tasks || []).map(t => ({ name: t.name, weight: t.weight, defaultEnabled: t.defaultEnabled, icon: t.icon }));
   TASK_COLORS = {};
   (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
   FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
+  return PEOPLE.length > 0 && TASKS.length > 0;
+}
 
-  if (PEOPLE.length === 0 || TASKS.length === 0) {
-    setStatus("Server returned an empty configuration -- check admin.html.", "err");
-    return;
-  }
-
+function buildUIFromCurrentConfig() {
   config = loadOrInitConfig();
   isDark = config.darkMode;
   useFixedRotation = config.useFixedRotation;
@@ -713,6 +723,50 @@ async function init() {
     : "Use fixed rotation (none configured yet)";
   applyFixedRotationUI();
   applyTheme();
+}
+
+async function init() {
+  const assignBtn = document.getElementById("assignBtn");
+  assignBtn.disabled = true;
+
+  if (WORKER_URL.includes("REPLACE-ME")) {
+    setStatus("Set WORKER_URL in index.html first (see README).", "err");
+    return;
+  }
+
+  const cached = readCachedServerConfig();
+  if (cached && applyServerConfig(cached)) {
+    // Instant render from cache -- no network wait for this page view.
+    buildUIFromCurrentConfig();
+    assignBtn.disabled = false;
+    setStatus("", "");
+
+    // Refresh silently in the background for NEXT load. Deliberately
+    // does not touch PEOPLE/TASKS/the live DOM again this session.
+    fetchServerConfig().then(writeCachedServerConfig).catch(() => {
+      // Non-fatal -- next load just tries the network again.
+    });
+    return;
+  }
+
+  // No usable cache yet (first-ever visit, or private browsing) -- fall
+  // back to waiting on the network before rendering anything.
+  setStatus("Loading configuration…", "info");
+  let serverCfg;
+  try {
+    serverCfg = await fetchServerConfig();
+  } catch (err) {
+    setStatus("Could not load configuration: " + err.message, "err");
+    return;
+  }
+
+  if (!applyServerConfig(serverCfg)) {
+    setStatus("Server returned an empty configuration -- check admin.html.", "err");
+    return;
+  }
+  writeCachedServerConfig(serverCfg);
+
+  buildUIFromCurrentConfig();
 
   setStatus("", "");
   assignBtn.disabled = false;
