@@ -570,11 +570,17 @@ function applyFixedRotationUI() {
     const color = TASK_COLORS[t.name] || null;
 
     if (useFixedRotation) {
-      checkbox.checked = false;
+      const person = schedule[weekday];
+
+      // Reflect reality: checked when someone is actually covering this
+      // task today via the rotation, unchecked only when today genuinely
+      // has no one assigned (e.g. a day left blank in admin.html). Either
+      // way it's locked -- the user can't override it manually while
+      // rotation is on, only see what's actually happening.
+      checkbox.checked = !!person;
       checkbox.disabled = true;
       taskRowEls[i].classList.add("fixed-locked");
 
-      const person = schedule[weekday];
       if (person) {
         result.textContent = person + " (rotation)";
         result.classList.add("filled");
