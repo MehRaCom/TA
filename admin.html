@@ -195,14 +195,30 @@
     <div id="taskRows"></div>
     <button class="add-btn" id="addTaskBtn" type="button">+ Add Task</button>
     <p class="subtitle" style="margin-top:10px;">
-      Icon note: only ☕ 🍽️ 🧹 🧽 🗑️ 📌 are pre-rendered for the Telegram image card.
-      Other emoji still work on the website, but show without an icon in the Telegram card.
+      Any emoji works as a task icon and is rendered in the Telegram image card itself --
+      icons are resolved and cached automatically, no pre-rendered list to maintain.
     </p>
   </div>
 
   <div class="panel">
     <h2>Fixed Rotation <span class="hint">per task, per weekday</span></h2>
     <div id="fixedScheduleRows"></div>
+    <p class="subtitle" style="margin-top:10px;">
+      If a task's rotation is turned on but there's no schedule entry for today's weekday
+      (or no schedule set at all), that task falls back to a normal random assignment for
+      the day instead of being skipped -- the Telegram card shows a visible warning when
+      this happens.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Automatic Run Days <span class="hint">cron schedule, Tehran time</span></h2>
+    <p class="subtitle">
+      The automated daily post fires every day at the configured time, but only actually
+      generates and sends on the weekdays ticked here. Untick a day to pause the automatic
+      run on it without touching the deployment.
+    </p>
+    <div id="automatedRunDaysRow" class="presence-row"></div>
   </div>
 
   <div class="panel">
@@ -211,6 +227,15 @@
       <label style="min-width:120px;">Card title text</label>
       <input type="text" id="cardTitleInput" class="name-field">
     </div>
+    <label class="check" style="margin-top:10px;">
+      <input type="checkbox" id="sendCaptionInput">
+      Send a text caption with each Telegram photo
+    </label>
+    <p class="subtitle" style="margin-top:4px;">
+      The caption lists who got what (grouped by person) alongside the image -- Telegram also
+      shows this text as the push-notification preview. Turn off to post the image with no
+      caption, so notification previews just say "Photo".
+    </p>
   </div>
 
   <div class="footer-actions">
@@ -222,9 +247,10 @@
 <script>
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { cardTitle: "Task Assignment" } };
+let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { cardTitle: "Task Assignment", sendCaption: true }, automatedRunDays: WEEKDAYS.slice(0, 5) };
 
 function setStatus(msg, kind) {
   const el = document.getElementById("status");
@@ -406,10 +432,38 @@ function renderFixedSchedules() {
     label.textContent = t.name;
     block.appendChild(label);
 
+    const autoLabel = document.createElement("label");
+    autoLabel.className = "check";
+    autoLabel.style.marginBottom = "8px";
+    const autoCb = document.createElement("input");
+    autoCb.type = "checkbox";
+    autoCb.checked = t.useInAutomatedRotation !== false; // default true, matches config.js
+    autoCb.addEventListener("change", () => { t.useInAutomatedRotation = autoCb.checked; });
+    autoLabel.appendChild(autoCb);
+    autoLabel.appendChild(document.createTextNode("Use this rotation for the automatic (cron) run"));
+    block.appendChild(autoLabel);
+
     const grid = document.createElement("div");
     grid.className = "weekday-grid";
 
     const schedule = state.fixedSchedules[t.name] || {};
+
+    const gapNote = document.createElement("p");
+    gapNote.className = "subtitle";
+    gapNote.style.marginTop = "8px";
+    gapNote.style.color = "var(--rotation-accent, #d1392e)";
+
+    function updateGapNote() {
+      const sched = state.fixedSchedules[t.name] || {};
+      const missing = WEEKDAYS.filter(d => !sched[d]);
+      if (missing.length === 0) {
+        gapNote.textContent = "";
+      } else {
+        gapNote.textContent =
+          "⚠ No rotation person set for: " + missing.join(", ") +
+          " — on those days (if the website/automated run has this task's rotation on), it falls back to a normal random pick with a warning shown on the Telegram card.";
+      }
+    }
 
     WEEKDAYS.forEach((day) => {
       const cell = document.createElement("div");
@@ -440,6 +494,7 @@ function renderFixedSchedules() {
         if (Object.keys(state.fixedSchedules[t.name]).length === 0) {
           delete state.fixedSchedules[t.name];
         }
+        updateGapNote();
       });
 
       cell.appendChild(dayLabel);
@@ -447,8 +502,35 @@ function renderFixedSchedules() {
       grid.appendChild(cell);
     });
 
+    updateGapNote();
     block.appendChild(grid);
+    block.appendChild(gapNote);
     container.appendChild(block);
+  });
+}
+
+// ---------------------------------------------------------------- Automated run days
+function renderAutomatedRunDays() {
+  const row = document.getElementById("automatedRunDaysRow");
+  row.innerHTML = "";
+  const current = state.automatedRunDays || WEEKDAYS.slice();
+  WEEKDAYS.forEach((day) => {
+    const chipLabel = document.createElement("label");
+    chipLabel.className = "presence-chip";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = current.includes(day);
+    chipLabel.classList.toggle("checked", cb.checked);
+    cb.addEventListener("change", () => {
+      const base = state.automatedRunDays || WEEKDAYS.slice();
+      state.automatedRunDays = cb.checked
+        ? [...new Set([...base, day])]
+        : base.filter(d => d !== day);
+      chipLabel.classList.toggle("checked", cb.checked);
+    });
+    chipLabel.appendChild(cb);
+    chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));
+    row.appendChild(chipLabel);
   });
 }
 
@@ -457,7 +539,9 @@ function renderAll() {
   renderPeople();
   renderTasks();
   renderFixedSchedules();
+  renderAutomatedRunDays();
   document.getElementById("cardTitleInput").value = state.appearance.cardTitle || "Task Assignment";
+  document.getElementById("sendCaptionInput").checked = state.appearance.sendCaption !== false;
 }
 
 async function loadConfig() {
@@ -470,7 +554,8 @@ async function loadConfig() {
       people: cfg.people || [],
       tasks: cfg.tasks || [],
       fixedSchedules: cfg.fixedSchedules || {},
-      appearance: cfg.appearance || { cardTitle: "Task Assignment" },
+      appearance: cfg.appearance || { cardTitle: "Task Assignment", sendCaption: true },
+      automatedRunDays: Array.isArray(cfg.automatedRunDays) ? cfg.automatedRunDays : WEEKDAYS.slice(0, 5),
     };
     renderAll();
     setStatus("Loaded current config.", "ok");
@@ -493,7 +578,11 @@ async function saveConfigToServer() {
     people: state.people,
     tasks: state.tasks,
     fixedSchedules: state.fixedSchedules,
-    appearance: { cardTitle: document.getElementById("cardTitleInput").value || "Task Assignment" },
+    appearance: {
+      cardTitle: document.getElementById("cardTitleInput").value || "Task Assignment",
+      sendCaption: document.getElementById("sendCaptionInput").checked,
+    },
+    automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
   };
 
   try {

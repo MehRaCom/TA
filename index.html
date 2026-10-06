@@ -267,6 +267,20 @@
   #status.err { color: var(--danger); }
   #status.info { color: var(--accent); }
 
+  #staleNotice {
+    display: none;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    cursor: pointer;
+  }
+  #staleNotice.show { display: block; }
+
   #notifyAnywayBtn {
     display: none;
   }
@@ -274,24 +288,43 @@
     display: inline-block;
   }
 
-  .rotation-toggle {
-    display: flex;
-    align-items: center;
-    gap: 9px;
+  #rotationFallbackNotice {
+    display: none;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: 10px;
     font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--rotation-accent);
+    background: var(--rotation-accent-soft);
+    border: 1px solid var(--rotation-accent);
+  }
+  #rotationFallbackNotice.show { display: block; }
+
+  .fixed-badge {
+    margin-right: 4px;
+  }
+
+  .rotation-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
     font-weight: 700;
     color: var(--rotation-accent);
     background: var(--rotation-accent-soft);
-    border: 1.5px solid var(--rotation-accent);
-    border-radius: 10px;
-    padding: 11px 12px !important;
-    margin-bottom: 14px;
+    border: 1px solid var(--rotation-accent);
+    border-radius: 999px;
+    padding: 3px 9px 3px 7px !important;
+    flex-shrink: 0;
   }
-  label.check.rotation-toggle:hover {
+  .rotation-chip:hover {
     background: var(--rotation-accent-soft);
   }
-  .rotation-toggle input[type="checkbox"] {
+  .rotation-chip input[type="checkbox"] {
     accent-color: var(--rotation-accent);
+    width: 13px !important;
+    height: 13px !important;
   }
   .task-row.fixed-locked {
     opacity: 0.6;
@@ -308,10 +341,84 @@
   label.check.fixed-locked input[type="checkbox"] {
     cursor: not-allowed;
   }
+
+  /* ---------------------------------------------------------- Today's Assignments */
+  .today-panel { margin-top: 20px; }
+  .hint {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+  .today-slider {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 4px 2px 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .today-slider::-webkit-scrollbar { height: 8px; }
+  .today-slider::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+  .today-card {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    width: min(340px, 85vw);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .today-card-time {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .today-card-warning {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--rotation-accent);
+    background: var(--rotation-accent-soft);
+    border: 1px solid var(--rotation-accent);
+    border-radius: 8px;
+    padding: 6px 9px;
+    margin-bottom: 10px;
+  }
+  .today-card-person {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 10px 0 4px;
+  }
+  .today-card-person:first-of-type { margin-top: 0; }
+  .today-card-task {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    padding: 2px 0;
+  }
+  .today-card-task .weight {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .today-empty {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div id="staleNotice" role="button" tabindex="0">
+    The people/task configuration was updated since this page loaded &mdash; click here to reload with the latest.
+  </div>
+
+  <div id="rotationFallbackNotice"></div>
+
 
   <header class="top">
     <div class="brand">
@@ -332,10 +439,6 @@
 
     <section class="panel">
       <h2>Tasks &nbsp;/&nbsp; Assigned to</h2>
-      <label class="check rotation-toggle" id="rotationToggleLabel">
-        <input type="checkbox" id="rotationToggle">
-        <span id="rotationToggleText">Use fixed rotation schedule</span>
-      </label>
       <div id="taskList"></div>
     </section>
   </div>
@@ -345,6 +448,11 @@
     <button class="secondary" id="notifyAnywayBtn" type="button">Notify group anyway</button>
     <span id="status"></span>
   </footer>
+
+  <section class="panel today-panel" id="todaySection" style="display:none;">
+    <h2>Today's Assignments <span id="todayCount" class="hint"></span></h2>
+    <div id="todaySlider" class="today-slider"></div>
+  </section>
 
 </div>
 
@@ -381,9 +489,16 @@ let isDark = DEFAULT_DARK_MODE;
 function buildDefaultConfig() {
   return {
     darkMode: DEFAULT_DARK_MODE,
-    useFixedRotation: false,
     people: PEOPLE.map(p => ({ name: p.name, enabled: p.defaultEnabled })),
-    tasks: TASKS.map(t => ({ name: t.name, enabled: t.defaultEnabled, weight: t.weight })),
+    tasks: TASKS.map(t => ({
+      name: t.name,
+      enabled: t.defaultEnabled,
+      weight: t.weight,
+      // Only meaningful for a task that has a fixed schedule; its default
+      // comes from that task's admin-configured "use in automated run"
+      // setting. Irrelevant/unused otherwise.
+      useFixedRotation: FIXED_SCHEDULES[t.name] ? !!t.useInAutomatedRotation : false,
+    })),
   };
 }
 
@@ -391,7 +506,6 @@ function configIsValid(cfg) {
   if (!cfg || typeof cfg !== "object") return false;
   if (!Array.isArray(cfg.people) || !Array.isArray(cfg.tasks)) return false;
   if (typeof cfg.darkMode !== "boolean") return false;
-  if (typeof cfg.useFixedRotation !== "boolean") return false;
   if (cfg.people.length !== PEOPLE.length || cfg.tasks.length !== TASKS.length) return false;
   for (let i = 0; i < PEOPLE.length; i++) {
     const p = cfg.people[i];
@@ -401,6 +515,7 @@ function configIsValid(cfg) {
     const t = cfg.tasks[i];
     if (!t || t.name !== TASKS[i].name || typeof t.enabled !== "boolean") return false;
     if (typeof t.weight !== "number" || !(t.weight > 0)) return false;
+    if (typeof t.useFixedRotation !== "boolean") return false;
   }
   return true;
 }
@@ -432,7 +547,6 @@ function saveConfig(cfg) {
 function currentConfigFromUI() {
   return {
     darkMode: isDark,
-    useFixedRotation: useFixedRotation,
     people: PEOPLE.map((p, i) => {
       const isLocked = personChecks[i].disabled;
       const enabled = isLocked
@@ -440,7 +554,18 @@ function currentConfigFromUI() {
         : personChecks[i].checked;
       return { name: p.name, enabled };
     }),
-    tasks: TASKS.map((t, i) => ({ name: t.name, enabled: taskChecks[i].checked, weight: taskWeights[i] })),
+    tasks: TASKS.map((t, i) => {
+      const isLocked = taskChecks[i].disabled;
+      const enabled = isLocked
+        ? (fixedLockedTaskPriorState[t.name] ?? taskChecks[i].checked)
+        : taskChecks[i].checked;
+      return {
+        name: t.name,
+        enabled,
+        weight: taskWeights[i],
+        useFixedRotation: taskRotationChecks[i] ? taskRotationChecks[i].checked : false,
+      };
+    }),
   };
 }
 
@@ -449,10 +574,10 @@ function persistCurrentConfig() {
 }
 
 // --------------------------------------------------------------------- Build UI
-// config/useFixedRotation/taskWeights are populated inside init() below,
-// once PEOPLE/TASKS have actually been fetched from the server.
+// config/taskWeights are populated inside init() below, once PEOPLE/TASKS
+// have actually been fetched from the server. Rotation state now lives
+// per-task on each taskRotationChecks[i] checkbox, not as a single global.
 let config = null;
-let useFixedRotation = false;
 let taskWeights = [];
 
 function tehranWeekdayName(date) {
@@ -462,6 +587,7 @@ function tehranWeekdayName(date) {
 const personChecks = [];
 const personRowEls = [];
 const taskChecks = [];
+const taskRotationChecks = []; // per-task rotation checkbox, or null if that task has no fixed schedule
 const resultBoxes = [];
 const taskRowEls = [];
 
@@ -470,6 +596,11 @@ const taskRowEls = [];
 // while they're locked would overwrite their true preference with the
 // temporary forced value. Populated/cleared in applyFixedRotationUI.
 let fixedLockedPersonPriorState = {};
+
+// Same idea, for tasks: remembers a task's real "enabled" checkbox
+// preference while its OWN rotation lock is active, so persisting config
+// mid-lock doesn't clobber it with the temporary forced value.
+let fixedLockedTaskPriorState = {};
 
 function buildPeopleList() {
   const container = document.getElementById("peopleList");
@@ -530,6 +661,28 @@ function buildTaskList() {
     left.appendChild(label);
     left.appendChild(chip);
 
+    // Per-task rotation toggle -- only rendered for tasks that actually
+    // have a fixed schedule. Its default (before any localStorage
+    // override) comes from that task's admin-configured
+    // useInAutomatedRotation setting.
+    let rotationCb = null;
+    if (FIXED_SCHEDULES[t.name]) {
+      const rotationLabel = document.createElement("label");
+      rotationLabel.className = "check rotation-chip";
+      rotationCb = document.createElement("input");
+      rotationCb.type = "checkbox";
+      rotationCb.checked = !!(config.tasks[i] && config.tasks[i].useFixedRotation);
+      rotationCb.addEventListener("change", () => {
+        applyFixedRotationUI();
+        persistCurrentConfig();
+      });
+      const rotationText = document.createElement("span");
+      rotationText.textContent = "🔁 rotation";
+      rotationLabel.appendChild(rotationCb);
+      rotationLabel.appendChild(rotationText);
+      left.appendChild(rotationLabel);
+    }
+
     const connector = document.createElement("div");
     connector.className = "connector";
     connector.textContent = "→";
@@ -543,8 +696,8 @@ function buildTaskList() {
     row.appendChild(result);
     container.appendChild(row);
 
-
     taskChecks.push(input);
+    taskRotationChecks.push(rotationCb);
     resultBoxes.push(result);
     taskRowEls.push(row);
   });
@@ -566,11 +719,17 @@ function applyFixedRotationUI() {
     if (!schedule) return; // this task has no fixed schedule -- untouched
 
     const checkbox = taskChecks[i];
+    const rotationCb = taskRotationChecks[i];
     const result = resultBoxes[i];
     const color = TASK_COLORS[t.name] || null;
+    const thisTaskWantsRotation = !!(rotationCb && rotationCb.checked);
 
-    if (useFixedRotation) {
+    if (thisTaskWantsRotation) {
       const person = schedule[weekday];
+
+      if (!(t.name in fixedLockedTaskPriorState)) {
+        fixedLockedTaskPriorState[t.name] = checkbox.checked; // remember real preference, once
+      }
 
       // Reflect reality: checked when someone is actually covering this
       // task today via the rotation, unchecked only when today genuinely
@@ -582,19 +741,22 @@ function applyFixedRotationUI() {
       taskRowEls[i].classList.add("fixed-locked");
 
       if (person) {
-        result.textContent = person + " (rotation)";
+        result.textContent = "\u{1F501} " + person;
         result.classList.add("filled");
         if (color) result.style.color = color;
       } else {
-        result.textContent = "no rotation today";
+        result.textContent = "no rotation today — will assign randomly";
         result.classList.remove("filled");
         result.style.color = "";
       }
     } else {
+      if (checkbox.disabled) {
+        // Was locked before, now unlocking -- restore the real preference
+        checkbox.checked = fixedLockedTaskPriorState[t.name] ?? config.tasks[i].enabled;
+        delete fixedLockedTaskPriorState[t.name];
+      }
       checkbox.disabled = false;
       taskRowEls[i].classList.remove("fixed-locked");
-      // Restore whatever the saved config says for this task's own checkbox
-      checkbox.checked = config.tasks[i].enabled;
       result.textContent = "-- not assigned --";
       result.classList.remove("filled");
       result.style.color = "";
@@ -608,13 +770,16 @@ function applyFixedRotationUI() {
   // simply excluding them. Locking them ON here closes that off, and also
   // guarantees the "seed their workload" fairness behavior always applies
   // instead of only when the user happened to leave them ticked.
+  // Only tasks whose OWN rotation checkbox is on contribute a locked person.
   const lockedPersonNames = new Set();
-  if (useFixedRotation) {
-    for (const taskName of Object.keys(FIXED_SCHEDULES)) {
-      const person = FIXED_SCHEDULES[taskName][weekday];
-      if (person) lockedPersonNames.add(person);
-    }
-  }
+  TASKS.forEach((t, i) => {
+    const schedule = FIXED_SCHEDULES[t.name];
+    if (!schedule) return;
+    const rotationCb = taskRotationChecks[i];
+    if (!rotationCb || !rotationCb.checked) return;
+    const person = schedule[weekday];
+    if (person) lockedPersonNames.add(person);
+  });
 
   PEOPLE.forEach((p, i) => {
     const checkbox = personChecks[i];
@@ -638,13 +803,6 @@ function applyFixedRotationUI() {
     }
   });
 }
-
-const rotationToggle = document.getElementById("rotationToggle");
-rotationToggle.addEventListener("change", () => {
-  useFixedRotation = rotationToggle.checked;
-  applyFixedRotationUI();
-  persistCurrentConfig();
-});
 
 // --------------------------------------------------------------------- Theming
 function applyTheme() {
@@ -706,7 +864,10 @@ async function fetchServerConfig() {
 
 function applyServerConfig(serverCfg) {
   PEOPLE = (serverCfg.people || []).map(p => ({ name: p.name, defaultEnabled: p.defaultEnabled }));
-  TASKS = (serverCfg.tasks || []).map(t => ({ name: t.name, weight: t.weight, defaultEnabled: t.defaultEnabled, icon: t.icon }));
+  TASKS = (serverCfg.tasks || []).map(t => ({
+    name: t.name, weight: t.weight, defaultEnabled: t.defaultEnabled, icon: t.icon,
+    useInAutomatedRotation: !!t.useInAutomatedRotation,
+  }));
   TASK_COLORS = {};
   (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
   FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
@@ -716,17 +877,10 @@ function applyServerConfig(serverCfg) {
 function buildUIFromCurrentConfig() {
   config = loadOrInitConfig();
   isDark = config.darkMode;
-  useFixedRotation = config.useFixedRotation;
   taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
 
   buildPeopleList();
   buildTaskList();
-
-  rotationToggle.checked = useFixedRotation;
-  const fixedTaskNames = Object.keys(FIXED_SCHEDULES);
-  document.getElementById("rotationToggleText").textContent = fixedTaskNames.length > 0
-    ? "Use fixed rotation for: " + fixedTaskNames.join(", ")
-    : "Use fixed rotation (none configured yet)";
   applyFixedRotationUI();
   applyTheme();
 }
@@ -749,7 +903,18 @@ async function init() {
 
     // Refresh silently in the background for NEXT load. Deliberately
     // does not touch PEOPLE/TASKS/the live DOM again this session.
-    fetchServerConfig().then(writeCachedServerConfig).catch(() => {
+    fetchServerConfig().then((fresh) => {
+      writeCachedServerConfig(fresh);
+      // If the fresh copy differs from what this page rendered from,
+      // say so instead of silently showing stale data. The live UI is
+      // deliberately NOT rebuilt mid-session (that could yank a checkbox
+      // from under someone mid-selection) -- the user chooses when to reload.
+      if (fresh && cached && fresh.updatedAt && fresh.updatedAt !== cached.updatedAt) {
+        const notice = document.getElementById("staleNotice");
+        notice.classList.add("show");
+        notice.addEventListener("click", () => location.reload());
+      }
+    }).catch(() => {
       // Non-fatal -- next load just tries the network again.
     });
     return;
@@ -778,7 +943,86 @@ async function init() {
   assignBtn.disabled = false;
 }
 
+// --------------------------------------------------------------------- Today's Assignments slider
+// Shows every combination already generated today (manual clicks AND the
+// automated run) -- plain HTML/CSS cards, not images, so emoji render
+// natively and nothing needs to be re-rendered or stored server-side
+// beyond what's already in KV for the dedupe logic.
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function buildTodayCard(record) {
+  const card = document.createElement("div");
+  card.className = "today-card";
+
+  const time = document.createElement("div");
+  time.className = "today-card-time";
+  time.textContent = formatTehranTime(record.generatedAt);
+  card.appendChild(time);
+
+  if (record.rotationFallbackTasks && record.rotationFallbackTasks.length > 0) {
+    const warn = document.createElement("div");
+    warn.className = "today-card-warning";
+    warn.textContent = "⚠ No fixed rotation set for today: " + record.rotationFallbackTasks.join(", ");
+    card.appendChild(warn);
+  }
+
+  const byPerson = new Map();
+  (record.assignment || []).forEach((a) => {
+    if (!byPerson.has(a.person)) byPerson.set(a.person, []);
+    byPerson.get(a.person).push(a);
+  });
+
+  byPerson.forEach((tasks, person) => {
+    const personEl = document.createElement("div");
+    personEl.className = "today-card-person";
+    personEl.textContent = person;
+    card.appendChild(personEl);
+
+    tasks.forEach((t) => {
+      const row = document.createElement("div");
+      row.className = "today-card-task";
+      row.style.color = t.color || "inherit";
+      row.innerHTML =
+        (t.fixed ? "🔁 " : "") +
+        (t.icon ? esc(t.icon) + " " : "") +
+        `<span>${esc(t.task)}</span>` +
+        (typeof t.weight === "number" ? `<span class="weight">×${t.weight}</span>` : "");
+      card.appendChild(row);
+    });
+  });
+
+  return card;
+}
+
+async function loadTodaySlider() {
+  const section = document.getElementById("todaySection");
+  const slider = document.getElementById("todaySlider");
+  const count = document.getElementById("todayCount");
+  try {
+    const resp = await fetch(WORKER_URL + "/today");
+    if (!resp.ok) return; // non-fatal -- the main app still works without this
+    const data = await resp.json();
+    const results = data.results || [];
+
+    slider.innerHTML = "";
+    if (results.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+    count.textContent = `(${results.length})`;
+    results.forEach((record) => slider.appendChild(buildTodayCard(record)));
+    section.style.display = "";
+  } catch (err) {
+    // Non-fatal -- the slider is a nice-to-have, never blocks the main app.
+  }
+}
+
 init();
+loadTodaySlider();
 
 // --------------------------------------------------------------------- Algorithm
 // NOTE: the actual weighted-balancing algorithm now runs on the SERVER
@@ -805,12 +1049,30 @@ function renderAssignment(assignment) {
   TASKS.forEach((t, i) => {
     const entry = byTask.get(t.name);
     if (entry) {
-      resultBoxes[i].textContent = entry.person + (entry.fixed ? " (rotation)" : "");
+      // A leading 🔁 marks a task that was actually covered by its fixed
+      // rotation today (matches the same symbol used in the Telegram
+      // card and next to each task's own rotation checkbox above) --
+      // mirrors the server's `fixed` flag exactly, so a task that fell
+      // back to a random pick (no schedule for today) correctly shows
+      // with NO badge here, same as the server-side warning banner.
+      resultBoxes[i].textContent = (entry.fixed ? "\u{1F501} " : "") + entry.person;
       resultBoxes[i].classList.add("filled");
+      resultBoxes[i].classList.toggle("fixed-result", !!entry.fixed);
       const color = TASK_COLORS[t.name];
       if (color) resultBoxes[i].style.color = color;
     }
   });
+}
+
+function renderRotationFallbackNotice(rotationFallbackTasks) {
+  const el = document.getElementById("rotationFallbackNotice");
+  if (rotationFallbackTasks && rotationFallbackTasks.length > 0) {
+    el.textContent = "⚠ No fixed rotation set for today for: " +
+      rotationFallbackTasks.join(", ") + " — assigned randomly instead.";
+    el.classList.add("show");
+  } else {
+    el.classList.remove("show");
+  }
 }
 
 function formatTehranTime(isoString) {
@@ -833,6 +1095,7 @@ async function callAssignEndpoint(forceNotify) {
     name: t.name,
     weight: taskWeights[i],
     enabled: taskChecks[i].checked,
+    useFixedRotation: taskRotationChecks[i] ? taskRotationChecks[i].checked : false,
   }));
 
   if (enabledPeopleNames.length === 0) {
@@ -852,7 +1115,6 @@ async function callAssignEndpoint(forceNotify) {
     people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
     tasks: enabledTasksPayload,
     forceNotify: !!forceNotify,
-    useFixedRotation: useFixedRotation,
   };
 
   const resp = await fetch(WORKER_URL + "/assign", {
@@ -871,6 +1133,7 @@ async function onAssignClicked() {
   const assignBtn = document.getElementById("assignBtn");
   const notifyBtn = document.getElementById("notifyAnywayBtn");
   notifyBtn.classList.remove("show");
+  renderRotationFallbackNotice(null);
   assignBtn.disabled = true;
   setStatus("Checking today's assignments…", "info");
 
@@ -880,6 +1143,8 @@ async function onAssignClicked() {
 
     lastServerResult = data;
     renderAssignment(data.assignment);
+    renderRotationFallbackNotice(data.rotationFallbackTasks);
+    loadTodaySlider();
 
     if (data.status === "new") {
       setStatus("New assignment generated and sent to the group.", "ok");
@@ -907,6 +1172,7 @@ async function onNotifyAnywayClicked() {
     if (!data) { notifyBtn.disabled = false; return; }
     lastServerResult = data;
     renderAssignment(data.assignment);
+    renderRotationFallbackNotice(data.rotationFallbackTasks);
     setStatus("Reminder posted to the group.", "ok");
     notifyBtn.classList.remove("show");
   } catch (err) {
