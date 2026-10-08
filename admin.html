@@ -125,6 +125,25 @@
     background: var(--accent-soft);
   }
 
+  .caption-mode-row { display: flex; flex-direction: column; gap: 8px; }
+  label.caption-mode-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  label.caption-mode-option input[type="radio"] { width: 15px; height: 15px; }
+  label.caption-mode-option:has(input:checked),
+  label.caption-mode-option.checked {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
   button {
     font-family: var(--font-body);
     font-weight: 600;
@@ -227,14 +246,27 @@
       <label style="min-width:120px;">Card title text</label>
       <input type="text" id="cardTitleInput" class="name-field">
     </div>
-    <label class="check" style="margin-top:10px;">
-      <input type="checkbox" id="sendCaptionInput">
-      Send a text caption with each Telegram photo
+  </div>
+
+  <div class="panel">
+    <h2>Telegram Message Options</h2>
+    <p class="subtitle" style="margin-bottom:10px;">
+      The caption lists who got what (grouped by person) alongside the image -- Telegram also
+      shows this text as the push-notification preview when it's attached to the photo.
+    </p>
+    <div id="captionModeRow" class="caption-mode-row"></div>
+    <label class="check" style="margin-top:14px;">
+      <input type="checkbox" id="photoSilentInput">
+      Send photo silently (no notification sound)
+    </label>
+    <br>
+    <label class="check" style="margin-top:8px;">
+      <input type="checkbox" id="captionSilentInput">
+      Send caption silently (no notification sound)
     </label>
     <p class="subtitle" style="margin-top:4px;">
-      The caption lists who got what (grouped by person) alongside the image -- Telegram also
-      shows this text as the push-notification preview. Turn off to post the image with no
-      caption, so notification previews just say "Photo".
+      Ignored when caption mode is "No caption" -- there's no separate caption notification to
+      silence in that case.
     </p>
   </div>
 
@@ -247,10 +279,21 @@
 <script>
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
-
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { cardTitle: "Task Assignment", sendCaption: true }, automatedRunDays: WEEKDAYS.slice(0, 5) };
+const DEFAULT_APPEARANCE = {
+  cardTitle: "Task Assignment",
+  captionMode: "onPhoto", // "none" | "onPhoto" | "separateMessage"
+  photoSilent: false,
+  captionSilent: false,
+};
+const CAPTION_MODE_OPTIONS = [
+  { value: "none", label: "No caption" },
+  { value: "onPhoto", label: "Caption on photo" },
+  { value: "separateMessage", label: "Caption as separate message" },
+];
+
+let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { ...DEFAULT_APPEARANCE }, automatedRunDays: WEEKDAYS.slice(0, 5) };
 
 function setStatus(msg, kind) {
   const el = document.getElementById("status");
@@ -534,6 +577,31 @@ function renderAutomatedRunDays() {
   });
 }
 
+// ---------------------------------------------------------------- Telegram Message Options
+function renderCaptionModeOptions() {
+  const row = document.getElementById("captionModeRow");
+  row.innerHTML = "";
+  const current = state.appearance.captionMode || DEFAULT_APPEARANCE.captionMode;
+  CAPTION_MODE_OPTIONS.forEach((opt) => {
+    const optLabel = document.createElement("label");
+    optLabel.className = "caption-mode-option";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "captionMode";
+    radio.value = opt.value;
+    radio.checked = current === opt.value;
+    optLabel.classList.toggle("checked", radio.checked);
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.appearance.captionMode = opt.value;
+      renderCaptionModeOptions(); // re-render so the "checked" styling moves
+    });
+    optLabel.appendChild(radio);
+    optLabel.appendChild(document.createTextNode(opt.label));
+    row.appendChild(optLabel);
+  });
+}
+
 // ---------------------------------------------------------------- Load / Save
 function renderAll() {
   renderPeople();
@@ -541,7 +609,9 @@ function renderAll() {
   renderFixedSchedules();
   renderAutomatedRunDays();
   document.getElementById("cardTitleInput").value = state.appearance.cardTitle || "Task Assignment";
-  document.getElementById("sendCaptionInput").checked = state.appearance.sendCaption !== false;
+  renderCaptionModeOptions();
+  document.getElementById("photoSilentInput").checked = !!state.appearance.photoSilent;
+  document.getElementById("captionSilentInput").checked = !!state.appearance.captionSilent;
 }
 
 async function loadConfig() {
@@ -554,7 +624,10 @@ async function loadConfig() {
       people: cfg.people || [],
       tasks: cfg.tasks || [],
       fixedSchedules: cfg.fixedSchedules || {},
-      appearance: cfg.appearance || { cardTitle: "Task Assignment", sendCaption: true },
+      // The Worker's normalizeConfig() already migrates a legacy boolean
+      // `sendCaption` into `captionMode` server-side, but default/merge
+      // here too in case an older cached response lacks the new fields.
+      appearance: { ...DEFAULT_APPEARANCE, ...(cfg.appearance || {}) },
       automatedRunDays: Array.isArray(cfg.automatedRunDays) ? cfg.automatedRunDays : WEEKDAYS.slice(0, 5),
     };
     renderAll();
@@ -580,7 +653,9 @@ async function saveConfigToServer() {
     fixedSchedules: state.fixedSchedules,
     appearance: {
       cardTitle: document.getElementById("cardTitleInput").value || "Task Assignment",
-      sendCaption: document.getElementById("sendCaptionInput").checked,
+      captionMode: state.appearance.captionMode || DEFAULT_APPEARANCE.captionMode,
+      photoSilent: document.getElementById("photoSilentInput").checked,
+      captionSilent: document.getElementById("captionSilentInput").checked,
     },
     automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
   };
