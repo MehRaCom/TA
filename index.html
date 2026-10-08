@@ -214,7 +214,11 @@
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: var(--task-color, var(--accent));
+    /* Same color for every task's "on" state, matching the legend above
+       the list -- per-task color is reserved for the name/icon/weight
+       chip, not the checkbox itself, so the checkbox's color always
+       means the same thing (on vs. fixed) at a glance. */
+    accent-color: var(--accent);
   }
   .task-row.tri-fixed .tri-control input[type="checkbox"] {
     accent-color: var(--rotation-accent);
@@ -258,6 +262,21 @@
     border-radius: 6px;
     padding: 2px 6px;
     flex-shrink: 0;
+  }
+  /* Passive hint: this task has someone covering today in the LOCAL
+     config, shown regardless of the control's current state so the
+     option is visible before the user even clicks. Hidden once the
+     task is actually in the fixed state, since the colored 🔁 name
+     prefix already carries that signal at that point -- showing both
+     would be redundant. */
+  .rotation-hint-badge {
+    font-size: 0.85rem;
+    line-height: 1;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
+  .task-row.tri-fixed .rotation-hint-badge {
+    display: none;
   }
   .result-box {
     font-size: 0.9rem;
@@ -707,13 +726,29 @@ function buildTaskList() {
     if (initialState === "fixed") row.classList.add("tri-fixed");
     if (color) row.style.setProperty("--task-color", color);
 
+    // Whether this task's local schedule actually has someone covering
+    // TODAY's weekday -- used to show a passive "this option is available
+    // today" hint badge regardless of the control's current state, so the
+    // user knows fixed rotation is on the table before they even click.
+    const weekday = tehranWeekdayName(new Date());
+    const rotationPossibleToday = hasFixed && !!FIXED_SCHEDULES[t.name][weekday];
+    if (rotationPossibleToday) row.classList.add("rotation-possible-today");
+
     const controlLabel = document.createElement("label");
     controlLabel.className = "tri-control";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.checked = initialState !== "off";
     input.addEventListener("click", (e) => {
-      e.preventDefault(); // we drive the 3 states ourselves, not the browser's 2
+      // Deliberately NOT calling e.preventDefault() here: per the HTML
+      // spec, canceling a checkbox's click restores `.checked` to its
+      // PRE-click value right after this listener returns (the
+      // "cancelled activation behavior" steps), which would silently
+      // stomp over any explicit `.checked` assignment made below inside
+      // cycleTaskState/setTaskState -- the exact bug where clicking
+      // looked like it did nothing. Letting the native toggle commit
+      // first, then overriding `.checked` ourselves afterward (still
+      // inside this same handler), is what actually sticks.
       cycleTaskState(i);
     });
     controlLabel.appendChild(input);
@@ -733,6 +768,13 @@ function buildTaskList() {
 
     const meta = document.createElement("div");
     meta.className = "task-meta";
+    if (rotationPossibleToday) {
+      const hintBadge = document.createElement("span");
+      hintBadge.className = "rotation-hint-badge";
+      hintBadge.textContent = "\u{1F501}";
+      hintBadge.title = "Fixed rotation is available for this task today -- click the checkbox twice to use it";
+      meta.appendChild(hintBadge);
+    }
     const chip = document.createElement("span");
     chip.className = "weight-chip";
     chip.textContent = "×" + taskWeights[i];
