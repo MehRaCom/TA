@@ -162,6 +162,38 @@
   }
   .task-row:last-child { border-bottom: none; }
 
+  /* Explains the tri-state task checkbox (off / on / fixed-rotation) right
+     above the task list, so the cycling behavior isn't a surprise. */
+  .tri-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin: -4px 0 12px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .tri-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tri-legend-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border, var(--muted));
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .tri-legend-dot.off { background: transparent; }
+  .tri-legend-dot.on { background: var(--accent); border-color: var(--accent); }
+  .tri-legend-dot.fixed { background: var(--rotation-accent); border-color: var(--rotation-accent); }
+  .tri-legend-hint { font-style: italic; }
+  @media (max-width: 600px) {
+    .tri-legend { gap: 10px 14px; }
+  }
+
   /* Live, client-side-only preview: this task is set to fixed rotation
      AND today's weekday actually has someone in FIXED_SCHEDULES locally.
      Removed again if the server later reports a fallback for this task
@@ -183,9 +215,6 @@
     height: 18px;
     cursor: pointer;
     accent-color: var(--task-color, var(--accent));
-  }
-  .task-row[data-state="off"] .tri-control input[type="checkbox"] {
-    accent-color: var(--muted);
   }
   .task-row.tri-fixed .tri-control input[type="checkbox"] {
     accent-color: var(--rotation-accent);
@@ -349,15 +378,6 @@
   }
   #rotationFallbackNotice.show { display: block; }
 
-  .task-row.fixed-locked {
-    opacity: 0.6;
-  }
-  .task-row.fixed-locked .tri-control {
-    cursor: not-allowed;
-  }
-  .task-row.fixed-locked input[type="checkbox"] {
-    cursor: not-allowed;
-  }
   label.check.fixed-locked {
     opacity: 0.6;
   }
@@ -462,6 +482,12 @@
 
     <section class="panel">
       <h2>Tasks &nbsp;/&nbsp; Assigned to</h2>
+      <div class="tri-legend">
+        <span><span class="tri-legend-dot off"></span>Off — excluded</span>
+        <span><span class="tri-legend-dot on"></span>On — random pool</span>
+        <span><span class="tri-legend-dot fixed"></span>Fixed rotation today</span>
+        <span class="tri-legend-hint">Click a task's checkbox to cycle through states</span>
+      </div>
       <div id="taskList"></div>
     </section>
   </div>
@@ -578,15 +604,18 @@ function currentConfigFromUI() {
       return { name: p.name, enabled };
     }),
     tasks: TASKS.map((t, i) => {
-      const isLocked = taskChecks[i].disabled;
-      const enabled = isLocked
-        ? (fixedLockedTaskPriorState[t.name] ?? taskChecks[i].checked)
-        : taskChecks[i].checked;
+      // The control's `.checked` is only a same-day preview once the task
+      // is in "fixed" state (true only when someone actually covers today
+      // locally -- see applyFixedRotationUI) -- it is NOT whether the task
+      // participates at all. Participation is the tri-state itself: "off"
+      // means excluded, "on"/"fixed" both mean included (fixed just also
+      // asks the server to prefer the rotation for it).
+      const state = taskRowEls[i].dataset.state;
       return {
         name: t.name,
-        enabled,
+        enabled: state !== "off",
         weight: taskWeights[i],
-        useFixedRotation: taskRowEls[i].dataset.state === "fixed",
+        useFixedRotation: state === "fixed",
       };
     }),
   };
@@ -619,11 +648,6 @@ const taskRowEls = [];
 // while they're locked would overwrite their true preference with the
 // temporary forced value. Populated/cleared in applyFixedRotationUI.
 let fixedLockedPersonPriorState = {};
-
-// Same idea, for tasks: remembers a task's real "enabled" checkbox
-// preference while its OWN rotation lock is active, so persisting config
-// mid-lock doesn't clobber it with the temporary forced value.
-let fixedLockedTaskPriorState = {};
 
 function buildPeopleList() {
   const container = document.getElementById("peopleList");
@@ -758,18 +782,15 @@ function applyFixedRotationUI() {
     if (thisTaskWantsRotation) {
       const person = schedule[weekday];
 
-      if (!(t.name in fixedLockedTaskPriorState)) {
-        fixedLockedTaskPriorState[t.name] = checkbox.checked; // remember real preference, once
-      }
-
       // Reflect reality: checked when someone is actually covering this
       // task today via the rotation, unchecked only when today genuinely
-      // has no one assigned (e.g. a day left blank in admin.html). Either
-      // way it's locked -- the user can't override it manually while
-      // rotation is on, only see what's actually happening.
+      // has no one assigned (e.g. a day left blank in admin.html). This
+      // control IS the tri-state cycle itself, so it must stay clickable
+      // here -- disabling it would trap the task in "fixed" forever with
+      // no way to click back to "on"/"off". Only the checked flag (a
+      // pure visual/preview thing) reflects today's resolution; actual
+      // state transitions keep going through cycleTaskState().
       checkbox.checked = !!person;
-      checkbox.disabled = true;
-      row.classList.add("fixed-locked");
 
       // Live, client-side-only red-box preview: fixed state + a local
       // schedule entry for today. Cleared again by the assign-response
@@ -787,13 +808,6 @@ function applyFixedRotationUI() {
         result.style.color = "";
       }
     } else {
-      if (checkbox.disabled) {
-        // Was locked before, now unlocking -- restore the real preference
-        checkbox.checked = fixedLockedTaskPriorState[t.name] ?? config.tasks[i].enabled;
-        delete fixedLockedTaskPriorState[t.name];
-      }
-      checkbox.disabled = false;
-      row.classList.remove("fixed-locked");
       row.classList.remove("rotation-live-ok");
       result.textContent = "-- not assigned --";
       result.classList.remove("filled");
