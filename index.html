@@ -31,6 +31,10 @@
     --success: #58d68d;
     --rotation-accent: #ff5c5c;
     --rotation-accent-soft: rgba(255, 92, 92, 0.14);
+    /* Deliberately a blue, not another orange/red, for the "on" (dynamic)
+       checkbox state -- the brand accent and the rotation-red were too
+       close to each other to tell apart at a glance. */
+    --on-accent: #4ea1ff;
   }
   html[data-theme="light"] {
     --bg: #f5f4f1;
@@ -46,6 +50,10 @@
     --success: #2e9e5b;
     --rotation-accent: #d1392e;
     --rotation-accent-soft: rgba(209, 57, 46, 0.08);
+    /* Deliberately a blue, not another orange/red, for the "on" (dynamic)
+       checkbox state -- the brand accent and the rotation-red were too
+       close to each other to tell apart at a glance. */
+    --on-accent: #2f6fed;
   }
   /* ===================================================================== */
 
@@ -187,7 +195,7 @@
     flex-shrink: 0;
   }
   .tri-legend-dot.off { background: transparent; }
-  .tri-legend-dot.on { background: var(--accent); border-color: var(--accent); }
+  .tri-legend-dot.on { background: var(--on-accent); border-color: var(--on-accent); }
   .tri-legend-dot.fixed { background: var(--rotation-accent); border-color: var(--rotation-accent); }
   .tri-legend-hint { font-style: italic; }
   @media (max-width: 600px) {
@@ -217,10 +225,18 @@
     /* Same color for every task's "on" state, matching the legend above
        the list -- per-task color is reserved for the name/icon/weight
        chip, not the checkbox itself, so the checkbox's color always
-       means the same thing (on vs. fixed) at a glance. */
-    accent-color: var(--accent);
+       means the same thing (on vs. fixed) at a glance. A distinct blue,
+       not a second orange/red, so it reads clearly apart from the red
+       fixed-rotation state below. */
+    accent-color: var(--on-accent);
   }
-  .task-row.tri-fixed .tri-control input[type="checkbox"] {
+  /* Only actually red when the task is BOTH selected as fixed AND has
+     someone covering today's weekday in the local config -- a task
+     cached as "fixed" from a previous day, with no schedule entry for
+     TODAY, must not look active/available; it keeps the plain "on"
+     (blue) look instead (and the result box below already explains it
+     will fall back to a random pick). */
+  .task-row.tri-fixed.rotation-possible-today .tri-control input[type="checkbox"] {
     accent-color: var(--rotation-accent);
   }
 
@@ -239,11 +255,11 @@
     font-size: 0.94rem;
     min-width: 0;
   }
-  .task-row.tri-fixed .name {
+  .task-row.tri-fixed.rotation-possible-today .name {
     color: var(--rotation-accent);
     font-weight: 600;
   }
-  .task-row.tri-fixed .name::before {
+  .task-row.tri-fixed.rotation-possible-today .name::before {
     content: "\1F501 "; /* 🔁 */
   }
 
@@ -264,19 +280,28 @@
     flex-shrink: 0;
   }
   /* Passive hint: this task has someone covering today in the LOCAL
-     config, shown regardless of the control's current state so the
-     option is visible before the user even clicks. Hidden once the
-     task is actually in the fixed state, since the colored 🔁 name
-     prefix already carries that signal at that point -- showing both
-     would be redundant. */
+     config. Stays visible in every state -- off, on, and fixed -- so it
+     never looks like the option vanished. A plain emoji glyph ignores
+     CSS `color`, so "changing color" is done with a background/border
+     pill instead: muted/outlined normally, filled in the rotation color
+     once the task is actually selected AND resolved as fixed today. */
   .rotation-hint-badge {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     line-height: 1;
-    opacity: 0.55;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    opacity: 0.7;
   }
-  .task-row.tri-fixed .rotation-hint-badge {
-    display: none;
+  .task-row.tri-fixed.rotation-possible-today .rotation-hint-badge {
+    opacity: 1;
+    border-color: var(--rotation-accent);
+    background: var(--rotation-accent-soft);
   }
   .result-box {
     font-size: 0.9rem;
@@ -801,13 +826,16 @@ function buildTaskList() {
 }
 
 // --------------------------------------------------------------- Fixed rotation
-// Enforces the mutual exclusion for EVERY task that has a fixed schedule
-// entry (not just one hardcoded task): while the rotation is on, each
-// such task's own checkbox is locked off (forced unchecked, disabled)
-// since there's nothing left for the user to decide about it. Also fills
-// in a same-page PREVIEW of who that resolves to today, purely for
-// display -- the actual authoritative resolution happens server-side
-// when Assign is clicked (see worker/telegram-worker.js).
+// Fills in a same-page PREVIEW of who today's rotation resolves to for
+// every task currently selected as "fixed" -- purely for display; the
+// actual authoritative resolution always happens server-side when Assign
+// is clicked (see worker/telegram-worker.js). The control itself is never
+// disabled here: `.checked` is driven ONLY by cycleTaskState/setTaskState
+// (state !== "off"), so it always reflects the user's actual selection,
+// never a same-day preview -- a task selected as fixed but with no one
+// scheduled for today's weekday must still show as "checked"/selected,
+// just without the active red styling (gated on .rotation-possible-today
+// in CSS) and with the result box explaining the fallback below.
 function applyFixedRotationUI() {
   const weekday = tehranWeekdayName(new Date());
 
@@ -816,23 +844,12 @@ function applyFixedRotationUI() {
     if (!schedule) return; // this task has no fixed schedule -- untouched
 
     const row = taskRowEls[i];
-    const checkbox = taskChecks[i];
     const result = resultBoxes[i];
     const color = TASK_COLORS[t.name] || null;
     const thisTaskWantsRotation = row.dataset.state === "fixed";
 
     if (thisTaskWantsRotation) {
       const person = schedule[weekday];
-
-      // Reflect reality: checked when someone is actually covering this
-      // task today via the rotation, unchecked only when today genuinely
-      // has no one assigned (e.g. a day left blank in admin.html). This
-      // control IS the tri-state cycle itself, so it must stay clickable
-      // here -- disabling it would trap the task in "fixed" forever with
-      // no way to click back to "on"/"off". Only the checked flag (a
-      // pure visual/preview thing) reflects today's resolution; actual
-      // state transitions keep going through cycleTaskState().
-      checkbox.checked = !!person;
 
       // Live, client-side-only red-box preview: fixed state + a local
       // schedule entry for today. Cleared again by the assign-response
@@ -1229,12 +1246,23 @@ async function callAssignEndpoint(forceNotify) {
     .filter(p => p.enabled)
     .map(p => p.name);
 
-  const enabledTasksPayload = TASKS.map((t, i) => ({
-    name: t.name,
-    weight: taskWeights[i],
-    enabled: taskChecks[i].checked,
-    useFixedRotation: taskRowEls[i].dataset.state === "fixed",
-  }));
+  // Reads participation from the tri-state itself (off = excluded, on/
+  // fixed = included), not `.checked` directly -- `.checked` is a UI
+  // affordance that should always match this already, but deriving both
+  // fields from the one source of truth (dataset.state) rules out any
+  // future drift between them (this is exactly how a prior bug slipped
+  // in: `.checked` used to get overwritten for a same-day preview,
+  // which silently sent `enabled:false` for a task that was actually
+  // selected as fixed rotation but unavailable that day).
+  const enabledTasksPayload = TASKS.map((t, i) => {
+    const state = taskRowEls[i].dataset.state;
+    return {
+      name: t.name,
+      weight: taskWeights[i],
+      enabled: state !== "off",
+      useFixedRotation: state === "fixed",
+    };
+  });
 
   if (enabledPeopleNames.length === 0) {
     setStatus("Select at least one person.", "err");
