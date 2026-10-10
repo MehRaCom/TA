@@ -568,8 +568,7 @@ let FIXED_SCHEDULES = {};
 // This is safe to be public -- it's just an address, not a secret. The
 // actual bot token lives server-side in the Worker's environment, never
 // here.
-// const WORKER_URL = "https://REPLACE-ME.workers.dev";
-const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+const WORKER_URL = "https://REPLACE-ME.workers.dev";
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
@@ -712,16 +711,34 @@ function buildPeopleList() {
   });
 }
 
+// Whether task i's fixed schedule has someone covering TODAY's specific
+// weekday -- not just whether the task has a fixed-schedule object at
+// all. A task can be rotation-capable in general (configured for other
+// weekdays) but simply have nothing for today, in which case offering a
+// 3rd state that's functionally identical to "on" (same blue, no hint,
+// falls back to random either way) is just confusing. The single source
+// of truth for "is fixed rotation actually a real option today" --
+// used to gate the 3rd state, the initial load state, the hint badge,
+// and the red-box preview, so they can never disagree with each other.
+function taskRotationAvailableToday(i) {
+  const schedule = FIXED_SCHEDULES[TASKS[i].name];
+  if (!schedule) return false;
+  const weekday = tehranWeekdayName(new Date());
+  return !!schedule[weekday];
+}
+
 // Cycles task i's single control through off -> on (dynamic) ->
-// on (fixed rotation) -> off. The 3rd state only exists for tasks that
-// actually have a FIXED_SCHEDULES entry.
+// on (fixed rotation) -> off. The 3rd state only exists for tasks whose
+// fixed schedule actually has someone covering TODAY (see
+// taskRotationAvailableToday) -- otherwise it's just a plain 2-state
+// off/on toggle for today's run.
 function cycleTaskState(i) {
   const row = taskRowEls[i];
-  const hasFixed = !!FIXED_SCHEDULES[TASKS[i].name];
+  const availableToday = taskRotationAvailableToday(i);
   const state = row.dataset.state;
   let next;
   if (state === "off") next = "on";
-  else if (state === "on") next = hasFixed ? "fixed" : "off";
+  else if (state === "on") next = availableToday ? "fixed" : "off";
   else next = "off";
   setTaskState(i, next);
 }
@@ -743,20 +760,23 @@ function buildTaskList() {
     row.className = "task-row";
 
     const color = TASK_COLORS[t.name] || null;
-    const hasFixed = !!FIXED_SCHEDULES[t.name];
-    const initialState = (hasFixed && config.tasks[i].useFixedRotation)
+    // Only ever starts in "fixed" if today's schedule actually has
+    // someone covering it -- a preference cached from a day when it WAS
+    // available (useFixedRotation:true) but with nothing for TODAY just
+    // starts as a plain "on" instead, since the 3rd state isn't even
+    // reachable today (see taskRotationAvailableToday/cycleTaskState).
+    const rotationPossibleToday = taskRotationAvailableToday(i);
+    const initialState = (rotationPossibleToday && config.tasks[i].useFixedRotation)
       ? "fixed"
       : (config.tasks[i].enabled ? "on" : "off");
     row.dataset.state = initialState;
     if (initialState === "fixed") row.classList.add("tri-fixed");
     if (color) row.style.setProperty("--task-color", color);
 
-    // Whether this task's local schedule actually has someone covering
-    // TODAY's weekday -- used to show a passive "this option is available
-    // today" hint badge regardless of the control's current state, so the
-    // user knows fixed rotation is on the table before they even click.
-    const weekday = tehranWeekdayName(new Date());
-    const rotationPossibleToday = hasFixed && !!FIXED_SCHEDULES[t.name][weekday];
+    // Static per page load (today's weekday doesn't change intra-session)
+    // -- used to show a passive "this option is available today" hint
+    // badge regardless of the control's current state, so the user knows
+    // fixed rotation is on the table before they even click.
     if (rotationPossibleToday) row.classList.add("rotation-possible-today");
 
     const controlLabel = document.createElement("label");

@@ -268,6 +268,17 @@
       Ignored when caption mode is "No caption" -- there's no separate caption notification to
       silence in that case.
     </p>
+    <label class="check" style="margin-top:14px;">
+      <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
+      Show the "no fixed rotation today" warning on Telegram for the automated run
+    </label>
+    <p class="subtitle" style="margin-top:4px;">
+      When a task wants fixed rotation but today's schedule has no entry for it, the automated
+      (cron) run still falls back to a random assignment either way -- this only controls whether
+      that fallback is called out with a warning on the image card/caption posted to the group.
+      Turn it off if that warning is too noisy for the automated run specifically; the website and
+      "Today's Assignments" slider still show it regardless. Manual Assign clicks are unaffected.
+    </p>
   </div>
 
   <div class="footer-actions">
@@ -279,6 +290,7 @@
 <script>
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
+
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 const DEFAULT_APPEARANCE = {
@@ -286,6 +298,7 @@ const DEFAULT_APPEARANCE = {
   captionMode: "onPhoto", // "none" | "onPhoto" | "separateMessage"
   photoSilent: false,
   captionSilent: false,
+  warnOnAutomatedRotationFallback: true,
 };
 const CAPTION_MODE_OPTIONS = [
   { value: "none", label: "No caption" },
@@ -612,6 +625,8 @@ function renderAll() {
   renderCaptionModeOptions();
   document.getElementById("photoSilentInput").checked = !!state.appearance.photoSilent;
   document.getElementById("captionSilentInput").checked = !!state.appearance.captionSilent;
+  document.getElementById("warnOnAutomatedRotationFallbackInput").checked =
+    state.appearance.warnOnAutomatedRotationFallback !== false;
 }
 
 async function loadConfig() {
@@ -656,6 +671,7 @@ async function saveConfigToServer() {
       captionMode: state.appearance.captionMode || DEFAULT_APPEARANCE.captionMode,
       photoSilent: document.getElementById("photoSilentInput").checked,
       captionSilent: document.getElementById("captionSilentInput").checked,
+      warnOnAutomatedRotationFallback: document.getElementById("warnOnAutomatedRotationFallbackInput").checked,
     },
     automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
   };
