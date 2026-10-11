@@ -667,6 +667,15 @@ function renderAll() {
 }
 
 async function loadConfig() {
+  // A raw, unhelpful "Failed to fetch" is what the browser shows for a
+  // request to a URL that doesn't resolve at all -- which is exactly what
+  // happens if WORKER_URL below is still the "REPLACE-ME" placeholder
+  // from the template. Catch that case specifically with a clear message
+  // instead of letting it fall through to the generic network-error text.
+  if (WORKER_URL.includes("REPLACE-ME")) {
+    setStatus("Set WORKER_URL in admin.html first (see README).", "err");
+    return;
+  }
   setStatus("Loading current config…", "info");
   try {
     const resp = await fetch(WORKER_URL + "/config");
@@ -690,6 +699,10 @@ async function loadConfig() {
 }
 
 async function saveConfigToServer() {
+  if (WORKER_URL.includes("REPLACE-ME")) {
+    setStatus("Set WORKER_URL in admin.html first (see README).", "err");
+    return;
+  }
   const password = document.getElementById("passwordInput").value;
   if (!password) {
     setStatus("Enter the admin password first.", "err");
