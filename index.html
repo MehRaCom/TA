@@ -197,6 +197,10 @@
   .tri-legend-dot.off { background: transparent; }
   .tri-legend-dot.on { background: var(--on-accent); border-color: var(--on-accent); }
   .tri-legend-dot.fixed { background: var(--rotation-accent); border-color: var(--rotation-accent); }
+  /* Same badge used before each task's name in the list, shown here in
+     its two possible looks so the legend actually explains what it means
+     rather than just naming the dot colors. */
+  .tri-legend .rotation-hint-badge { margin-right: 0; }
   .tri-legend-hint { font-style: italic; }
   @media (max-width: 600px) {
     .tri-legend { gap: 10px 14px; }
@@ -248,6 +252,11 @@
     text-align: center;
   }
 
+  .name-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
   .task-row .name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -258,9 +267,6 @@
   .task-row.tri-fixed.rotation-possible-today .name {
     color: var(--rotation-accent);
     font-weight: 600;
-  }
-  .task-row.tri-fixed.rotation-possible-today .name::before {
-    content: "\1F501 "; /* 🔁 */
   }
 
   .task-meta {
@@ -279,12 +285,12 @@
     padding: 2px 6px;
     flex-shrink: 0;
   }
-  /* Passive hint: this task has someone covering today in the LOCAL
-     config. Stays visible in every state -- off, on, and fixed -- so it
-     never looks like the option vanished. A plain emoji glyph ignores
-     CSS `color`, so "changing color" is done with a background/border
-     pill instead: muted/outlined normally, filled in the rotation color
-     once the task is actually selected AND resolved as fixed today. */
+  /* Passive sign, placed right before the task's name: this task has
+     someone covering today in the LOCAL config. Always just a red
+     outline, unchanged across off/on/fixed -- it marks availability, not
+     the current selection, so it never fills in. The row's own outline,
+     the checkbox, and the name are what turn red/filled once the task is
+     actually selected AND resolved as fixed today (unchanged from before). */
   .rotation-hint-badge {
     font-size: 0.78rem;
     line-height: 1;
@@ -295,13 +301,8 @@
     width: 20px;
     height: 20px;
     border-radius: 6px;
-    border: 1.5px solid var(--border);
-    opacity: 0.7;
-  }
-  .task-row.tri-fixed.rotation-possible-today .rotation-hint-badge {
-    opacity: 1;
-    border-color: var(--rotation-accent);
-    background: var(--rotation-accent-soft);
+    border: 1.5px solid var(--rotation-accent);
+    margin-right: 4px;
   }
   .result-box {
     font-size: 0.9rem;
@@ -332,8 +333,11 @@
     }
     .tri-control { grid-area: control; }
     .task-icon { grid-area: icon; }
-    .task-row .name {
+    .name-wrap {
       grid-area: name;
+      min-width: 0;
+    }
+    .task-row .name {
       overflow: visible;
       text-overflow: unset;
       white-space: normal;
@@ -530,6 +534,7 @@
         <span><span class="tri-legend-dot off"></span>Off — excluded</span>
         <span><span class="tri-legend-dot on"></span>On — random pool</span>
         <span><span class="tri-legend-dot fixed"></span>Fixed rotation today</span>
+        <span><span class="rotation-hint-badge">🔁</span>Rotation available for this task</span>
         <span class="tri-legend-hint">Click a task's checkbox to cycle through states</span>
       </div>
       <div id="taskList"></div>
@@ -570,7 +575,7 @@ let FIXED_SCHEDULES = {};
 // here.
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
-  
+
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
 
@@ -807,6 +812,14 @@ function buildTaskList() {
       iconSpan.style.borderRadius = "6px";
     }
 
+    let hintBadge = null;
+    if (rotationPossibleToday) {
+      hintBadge = document.createElement("span");
+      hintBadge.className = "rotation-hint-badge";
+      hintBadge.textContent = "\u{1F501}";
+      hintBadge.title = "Fixed rotation is available for this task today -- click the checkbox twice to use it";
+    }
+
     const nameSpan = document.createElement("span");
     nameSpan.className = "name";
     nameSpan.textContent = t.name;
@@ -814,13 +827,6 @@ function buildTaskList() {
 
     const meta = document.createElement("div");
     meta.className = "task-meta";
-    if (rotationPossibleToday) {
-      const hintBadge = document.createElement("span");
-      hintBadge.className = "rotation-hint-badge";
-      hintBadge.textContent = "\u{1F501}";
-      hintBadge.title = "Fixed rotation is available for this task today -- click the checkbox twice to use it";
-      meta.appendChild(hintBadge);
-    }
     const chip = document.createElement("span");
     chip.className = "weight-chip";
     chip.textContent = "×" + taskWeights[i];
@@ -834,9 +840,17 @@ function buildTaskList() {
     meta.appendChild(chip);
     meta.appendChild(result);
 
+    // The name cell is a single grid column (1fr) -- wrap the rotation
+    // sign + name together so the sign sits right before the name, not
+    // tucked into the meta/weight area, without breaking the row's grid.
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "name-wrap";
+    if (hintBadge) nameWrap.appendChild(hintBadge);
+    nameWrap.appendChild(nameSpan);
+
     row.appendChild(controlLabel);
     row.appendChild(iconSpan);
-    row.appendChild(nameSpan);
+    row.appendChild(nameWrap);
     row.appendChild(meta);
     container.appendChild(row);
 
