@@ -168,19 +168,20 @@
   .weekday-grid label { font-size: 0.75rem; color: var(--muted); display: block; margin-bottom: 3px; }
   .weekday-grid select { width: 100%; }
 
-  #saveBar {
+  #authBar {
     display: flex;
     gap: 10px;
     align-items: center;
+    margin-bottom: 20px;
     flex-wrap: wrap;
   }
-  #saveBar input { flex: 1; min-width: 180px; }
+  #authBar input { flex: 1; min-width: 180px; }
 
   #status {
     font-size: 0.88rem;
     padding: 10px 14px;
     border-radius: 8px;
-    margin-top: 14px;
+    margin-bottom: 16px;
     display: none;
   }
   #status.show { display: block; }
@@ -188,12 +189,19 @@
   #status.err { background: var(--danger-soft); color: var(--danger); }
   #status.info { background: var(--accent-soft); color: var(--accent); }
 
+  .footer-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Task Assigner — Admin</h1>
   <p class="subtitle">Edit people, tasks, fixed rotation, and appearance. Changes apply immediately — no code, no redeploy.</p>
+
+  <div id="authBar">
+    <input type="password" id="passwordInput" placeholder="Admin password (needed only to save)">
+  </div>
+
+  <div id="status"></div>
 
   <div class="panel">
     <h2>People <span class="hint">who can be assigned tasks</span></h2>
@@ -262,26 +270,20 @@
     </p>
     <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
-      Show the "no fixed rotation today" warning for the automated run
+      Show the "no fixed rotation today" warning on Telegram for the automated run
     </label>
     <p class="subtitle" style="margin-top:4px;">
       When a task wants fixed rotation but today's schedule has no entry for it, the automated
       (cron) run still falls back to a random assignment either way -- this only controls whether
-      that fallback is called out with a warning. Turn it off to suppress it everywhere the
-      automated run's result is shown: the Telegram image card/caption AND the website's
-      assignment card / "Today's Assignments" slider. Manual Assign clicks are never affected --
-      they always show the warning when it applies.
+      that fallback is called out with a warning on the image card/caption posted to the group.
+      Turn it off if that warning is too noisy for the automated run specifically; the website and
+      "Today's Assignments" slider still show it regardless. Manual Assign clicks are unaffected.
     </p>
   </div>
 
-  <div class="panel">
-    <h2>Save</h2>
-    <div id="saveBar">
-      <input type="password" id="passwordInput" placeholder="Admin password (needed only to save)">
-      <button class="primary" id="saveBtn" type="button">Save Changes</button>
-      <button id="reloadBtn" type="button">Reload from server</button>
-    </div>
-    <div id="status"></div>
+  <div class="footer-actions">
+    <button class="primary" id="saveBtn" type="button">Save Changes</button>
+    <button id="reloadBtn" type="button">Reload from server</button>
   </div>
 </div>
 
@@ -324,30 +326,7 @@ function renderPeople() {
     nameInput.type = "text";
     nameInput.className = "name-field";
     nameInput.value = p.name;
-    // A person's name is used as a VALUE inside state.fixedSchedules
-    // (each weekday cell stores who covers it, by name) -- renaming the
-    // person without updating those stored values would silently orphan
-    // them: the admin would see the old name reappear nowhere, but it'd
-    // still be sitting in fixedSchedules, and the Worker would reject the
-    // whole save with "Fixed schedule references unknown person ...".
-    // Track the name as of the last keystroke so each change can migrate
-    // just that one rename, not assume today's live-updating input value.
-    let lastPersonName = p.name;
-    nameInput.addEventListener("input", () => {
-      const newName = nameInput.value;
-      const oldName = lastPersonName;
-      p.name = newName;
-      if (newName !== oldName) {
-        Object.keys(state.fixedSchedules).forEach((taskName) => {
-          const sched = state.fixedSchedules[taskName];
-          Object.keys(sched).forEach((day) => {
-            if (sched[day] === oldName) sched[day] = newName;
-          });
-        });
-        lastPersonName = newName;
-      }
-      renderFixedSchedules();
-    });
+    nameInput.addEventListener("input", () => { p.name = nameInput.value; renderFixedSchedules(); });
 
     const enabledLabel = document.createElement("label");
     enabledLabel.className = "check";
@@ -432,23 +411,7 @@ function renderTasks() {
     nameInput.type = "text";
     nameInput.className = "name-field";
     nameInput.value = t.name;
-    // state.fixedSchedules is keyed BY task name -- renaming a task
-    // without moving its key would silently orphan the whole rotation
-    // grid under the old name (same failure mode as the person-rename
-    // case above: the Worker would reject the save with "Fixed schedule
-    // references unknown task ...", with no visible cause in the UI).
-    let lastTaskName = t.name;
-    nameInput.addEventListener("input", () => {
-      const newName = nameInput.value;
-      const oldName = lastTaskName;
-      t.name = newName;
-      if (newName !== oldName && Object.prototype.hasOwnProperty.call(state.fixedSchedules, oldName)) {
-        state.fixedSchedules[newName] = state.fixedSchedules[oldName];
-        delete state.fixedSchedules[oldName];
-        lastTaskName = newName;
-      }
-      renderFixedSchedules();
-    });
+    nameInput.addEventListener("input", () => { t.name = nameInput.value; renderFixedSchedules(); });
 
     const weightInput = document.createElement("input");
     weightInput.type = "number";
