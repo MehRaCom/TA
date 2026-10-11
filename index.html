@@ -284,6 +284,11 @@
     border-radius: 6px;
     padding: 2px 6px;
     flex-shrink: 0;
+    /* Fixed width (not just padding) so a 1-digit vs 2-digit weight
+       ("×5" vs "×12") doesn't itself shift the result box next to it. */
+    min-width: 30px;
+    text-align: center;
+    box-sizing: border-box;
   }
   /* Passive sign, placed right before the task's name: this task has
      someone covering today in the LOCAL config. Always just a red
@@ -312,7 +317,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 140px;
+    /* Fixed width, not just a cap -- each .task-row is its own grid
+       container, so the "meta" column's width is resolved per row from
+       its own content. A result box that only shrink-wraps its text
+       (placeholder vs. a resolved name vs. empty during a fixed-rotation
+       preview) made that column a different width on every row, visibly
+       shifting the weight chip left/right between tasks. A constant
+       width keeps every row's meta column -- and therefore the chip --
+       at the same horizontal position regardless of what's in the box. */
+    width: 140px;
+    box-sizing: border-box;
+    text-align: right;
   }
   .result-box.filled {
     color: var(--accent);
@@ -353,6 +368,8 @@
       white-space: normal;
       word-break: break-word;
       max-width: none;
+      width: auto;
+      text-align: left;
     }
   }
 
