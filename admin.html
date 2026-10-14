@@ -571,8 +571,8 @@ function renderFixedSchedules() {
     autoLabel.style.marginBottom = "8px";
     const autoCb = document.createElement("input");
     autoCb.type = "checkbox";
-    autoCb.checked = t.useInAutomatedRotation !== false; // default true, matches config.js
-    autoCb.addEventListener("change", () => { t.useInAutomatedRotation = autoCb.checked; });
+    autoCb.checked = t.useInAutomatedRotation === true; // default false (opt-in), matches config.js
+    autoCb.addEventListener("change", () => { t.useInAutomatedRotation = autoCb.checked; updateGapNote(); });
     autoLabel.appendChild(autoCb);
     autoLabel.appendChild(document.createTextNode("Use this rotation for the automatic (cron) run"));
     block.appendChild(autoLabel);
@@ -588,14 +588,24 @@ function renderFixedSchedules() {
     gapNote.style.color = "var(--rotation-accent, #d1392e)";
 
     function updateGapNote() {
+      // Only relevant once this task's rotation is actually turned on for
+      // the automated run -- otherwise the automated run never consults
+      // this schedule at all, so a gap in it means nothing yet.
+      if (!autoCb.checked) {
+        gapNote.textContent = "";
+        return;
+      }
       const sched = state.fixedSchedules[t.name] || {};
-      const missing = WEEKDAYS.filter(d => !sched[d]);
+      // Only check the days the automated run actually fires on -- a gap
+      // on a day the bot never runs isn't something to warn about.
+      const runDays = state.automatedRunDays || WEEKDAYS.slice(0, 5);
+      const missing = runDays.filter(d => !sched[d]);
       if (missing.length === 0) {
         gapNote.textContent = "";
       } else {
         gapNote.textContent =
           "⚠ No rotation person set for: " + missing.join(", ") +
-          " — on those days (if the website/automated run has this task's rotation on), it falls back to a normal random pick with a warning shown on the Telegram card.";
+          " — on those days, the automated run falls back to a normal random pick for this task, with a warning shown on the Telegram card.";
       }
     }
 
@@ -661,6 +671,9 @@ function renderAutomatedRunDays() {
         ? [...new Set([...base, day])]
         : base.filter(d => d !== day);
       chipLabel.classList.toggle("checked", cb.checked);
+      // The fixed-rotation gap warnings are computed against
+      // automatedRunDays -- keep them in sync.
+      renderFixedSchedules();
     });
     chipLabel.appendChild(cb);
     chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));

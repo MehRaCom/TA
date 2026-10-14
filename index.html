@@ -1040,7 +1040,15 @@ function applyServerConfig(serverCfg) {
 function buildUIFromCurrentConfig() {
   config = loadOrInitConfig();
   isDark = config.darkMode;
-  taskWeights = TASKS.map((t, i) => config.tasks[i].weight);
+  // Weight is never user-edited here -- it's read-only display (the "×N"
+  // chip) sourced from the admin page. Always take it fresh from TASKS
+  // (just populated from the server config), never from the cached local
+  // config: that cache exists to remember a visitor's own checkbox/fixed-
+  // rotation choices, not to pin an old admin-set weight forever. Resync
+  // it into `config` too so the next persistCurrentConfig() write carries
+  // the current value instead of re-freezing the stale one.
+  taskWeights = TASKS.map(t => t.weight);
+  config.tasks.forEach((t, i) => { t.weight = taskWeights[i]; });
 
   buildPeopleList();
   buildTaskList();
