@@ -500,6 +500,46 @@ function renderTasks() {
     row.appendChild(enabledLabel);
     row.appendChild(removeBtn);
     container.appendChild(row);
+
+    // ---- Active days (automated run only -- doesn't affect the manual
+    // Assign button on the website at all; mirrors the people "Present
+    // (automated run)" row above) ----
+    const activeRow = document.createElement("div");
+    activeRow.className = "presence-row";
+
+    const activeLabel = document.createElement("span");
+    activeLabel.className = "presence-label";
+    activeLabel.textContent = "Active (automated run):";
+    activeRow.appendChild(activeLabel);
+
+    // Unset activeDays means "active every day" -- reflect that as all
+    // 7 toggled on, so the UI never implies a restriction that isn't real.
+    const currentActive = t.activeDays || WEEKDAYS.slice();
+
+    WEEKDAYS.forEach((day) => {
+      const chipLabel = document.createElement("label");
+      chipLabel.className = "presence-chip";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = currentActive.includes(day);
+      if (cb.checked) chipLabel.classList.add("checked");
+      cb.addEventListener("change", () => {
+        const base = t.activeDays || WEEKDAYS.slice();
+        if (cb.checked) {
+          if (!base.includes(day)) base.push(day);
+        } else {
+          const idx = base.indexOf(day);
+          if (idx !== -1) base.splice(idx, 1);
+        }
+        t.activeDays = base;
+        chipLabel.classList.toggle("checked", cb.checked);
+      });
+      chipLabel.appendChild(cb);
+      chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));
+      activeRow.appendChild(chipLabel);
+    });
+
+    container.appendChild(activeRow);
   });
 }
 
