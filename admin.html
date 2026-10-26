@@ -42,6 +42,9 @@
   }
   .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
 
+  .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .field-row label { display: block; font-size: 0.85rem; }
+  .field-row input, .field-row select { width: 100%; box-sizing: border-box; margin-top: 4px; }
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -144,6 +147,104 @@
     background: var(--accent-soft);
   }
 
+  /* ---- Task Memory panel ---- */
+  #tmBody.off { opacity: 0.5; }
+  details.tm-section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 12px;
+    background: var(--bg);
+  }
+  details.tm-section > summary {
+    cursor: pointer;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  details.tm-section > summary::-webkit-details-marker { display: none; }
+  details.tm-section > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.tm-section[open] > summary::before { transform: rotate(90deg); }
+  details.tm-section > summary .tm-summary-now { margin-left: auto; font-weight: 400; font-size: 0.75rem; color: var(--muted); }
+  .tm-section-body { padding: 2px 14px 14px; }
+  .tm-group-title { font-size: 0.8rem; color: var(--muted); margin: 12px 0 6px; }
+  .tm-options { display: flex; flex-direction: column; gap: 6px; }
+  label.tm-opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.86rem;
+  }
+  label.tm-opt input[type="radio"] { width: 15px; height: 15px; margin-top: 2px; flex: none; }
+  label.tm-opt .tm-opt-desc { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  label.tm-opt:has(input:checked) { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  label.tm-opt:has(input:checked) .tm-opt-desc { color: var(--muted); }
+  .tm-emoji-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  label.tm-emoji {
+    display: flex; align-items: center; gap: 5px; padding: 5px 10px;
+    border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 1.05rem;
+  }
+  label.tm-emoji input[type="radio"] { width: 13px; height: 13px; }
+  label.tm-emoji:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .tm-preview {
+    white-space: pre-line;
+    margin-top: 10px; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem;
+    background: var(--bg); border: 1px dashed var(--border); color: var(--muted);
+  }
+  .tm-method-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; margin-top: 8px; }
+  label.tm-mcard {
+    display: flex; flex-direction: column; gap: 4px; padding: 10px 11px; border: 1px solid var(--border);
+    border-radius: 10px; cursor: pointer; font-size: 0.84rem; background: var(--bg);
+  }
+  label.tm-mcard input { position: absolute; opacity: 0; pointer-events: none; }
+  label.tm-mcard:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  label.tm-mcard:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tm-mname { font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tm-mtag { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
+  .tm-badge { font-size: 0.65rem; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+  .tm-meters { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; margin-top: 4px; font-size: 0.7rem; color: var(--muted); align-items: center; }
+  .tm-dots { display: inline-flex; gap: 2px; }
+  .tm-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); display: inline-block; }
+  .tm-dots i.on { background: var(--accent); }
+  .tm-method-detail { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--bg); font-size: 0.85rem; }
+  .tm-method-detail h3 { margin: 0 0 6px; font-size: 1rem; }
+  .tm-method-detail dl { display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; margin: 8px 0; }
+  .tm-method-detail dt { color: var(--muted); font-size: 0.78rem; }
+  .tm-method-detail dd { margin: 0; }
+  .tm-lab { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .tm-lab span { font-size: 0.74rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
+  .tm-lab b { color: var(--text); font-weight: 600; }
+  .tm-param { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px dashed var(--border); }
+  .tm-param .lbl { flex: 1 1 230px; }
+  .tm-param .lbl small { display: block; color: var(--muted); font-size: 0.74rem; }
+  .tm-param input[type="range"] { flex: 1 1 130px; min-width: 110px; accent-color: var(--accent); }
+  .tm-param input[type="number"] { width: 74px; }
+  .tm-uses { font-size: 0.76rem; color: var(--muted); margin-top: 8px; }
+  .tm-weekday-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .tm-weekday-grid label { font-size: 0.76rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .tm-weekday-grid select { font-size: 0.82rem; }
+  .tm-compare { overflow-x: auto; margin-top: 8px; }
+  .tm-compare table { border-collapse: collapse; font-size: 0.78rem; width: 100%; }
+  .tm-compare th, .tm-compare td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .tm-compare th:first-child, .tm-compare td:first-child { text-align: left; position: sticky; left: 0; background: var(--card, var(--bg)); }
+  .tm-compare td.hi { color: var(--danger); font-weight: 600; }
+  .tm-compare td.lo { color: var(--accent); font-weight: 600; }
+  .tm-compare th.cur { color: var(--accent); }
+  .tm-btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  #tmWarnings:empty { display: none; }
+  #tmWarnings { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .tm-warn { font-size: 0.82rem; padding: 9px 12px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); }
+  .tm-warn.info { background: var(--accent-soft); color: var(--accent); }
+  .tm-range-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .tm-range-row input[type="range"] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+
   button {
     font-family: var(--font-body);
     font-weight: 600;
@@ -242,6 +343,235 @@
     <div id="automatedRunDaysRow" class="presence-row"></div>
   </div>
 
+  <div class="panel" id="holPanel">
+    <h2>Iranian Holidays <span class="hint">automatic run only</span></h2>
+    <p class="subtitle">
+      When on, the automatic run first asks a holiday service whether today (Tehran date) is an
+      official holiday in Iran and does nothing if it is. The manual Assign button is never affected.
+      Weekday rules above still apply first.
+    </p>
+    <label class="check" style="font-size:0.95rem;color:var(--text);">
+      <input type="checkbox" id="holSkipInput">
+      <span>Don't run the automatic assignment on Iranian holidays</span>
+    </label>
+    <div id="holBody">
+      <div class="field-row" style="margin-top:12px;">
+        <label>If the service doesn't answer properly
+          <select id="holOnFailureInput">
+            <option value="generate">Generate anyway (recommended)</option>
+            <option value="skip">Skip the run</option>
+          </select>
+        </label>
+        <label>Retries after the first try (0-8)
+          <input type="number" id="holRetriesInput" min="0" max="8" step="1">
+        </label>
+        <label>Seconds between tries (0-15)
+          <input type="number" id="holDelayInput" min="0" max="15" step="1">
+        </label>
+        <label>Seconds to wait per try (2-20)
+          <input type="number" id="holTimeoutInput" min="2" max="20" step="1">
+        </label>
+      </div>
+      <p class="subtitle" id="holSummary" style="margin-top:8px;"></p>
+      <label style="display:block;margin-top:10px;">Service address
+        <input type="text" id="holUrlInput" spellcheck="false" style="width:100%;font-family:monospace;font-size:0.82rem;">
+      </label>
+      <p class="subtitle" style="margin-top:4px;">
+        Must be https and contain <code>{yyyy}</code> <code>{mm}</code> <code>{dd}</code> (Gregorian Tehran date).
+        It must answer JSON with a top-level <code>is_holiday</code> true/false. The default is holidayapi.ir.
+      </p>
+      <div class="field-row" style="margin-top:8px;">
+        <label>Extra holidays (always skipped) <span class="hint">one YYYY-MM-DD per line</span>
+          <textarea id="holExtraInput" rows="3" style="width:100%;font-family:monospace;" spellcheck="false"></textarea>
+        </label>
+        <label>Forced working days (never skipped) <span class="hint">overrides the service</span>
+          <textarea id="holWorkInput" rows="3" style="width:100%;font-family:monospace;" spellcheck="false"></textarea>
+        </label>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="add-btn" id="holTestBtn" type="button">Test the service now</button>
+        <input type="text" id="holTestDate" placeholder="YYYY-MM-DD (empty = today)" style="width:210px;">
+        <span id="holTestOut" class="subtitle" style="margin:0;"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="tmPanel">
+    <h2>Task Memory <span class="hint">fairness across days</span></h2>
+    <p class="subtitle" style="margin-bottom:10px;">
+      Makes the random assignment remember previous days. Each day, the <b>last</b> assignment
+      the bot posted to Telegram counts as that day's final one. Everyone then starts today
+      with a load built from what they did on those days, so whoever carried more recently
+      gets fewer tasks. Every behavior below is its own switch. History is recorded all the
+      time, even while this is off, so it's ready when you turn it on.
+    </p>
+
+    <label class="check" style="font-size:0.95rem;color:var(--text);">
+      <input type="checkbox" id="tmEnabledInput">
+      <b>Use task memory</b>
+    </label>
+
+    <div id="tmBody">
+
+      <details class="tm-section" open>
+        <summary>1 · Where it applies <span class="tm-summary-now" id="tmSum1"></span></summary>
+        <div class="tm-section-body">
+          <label class="check" style="margin-top:8px;">
+            <input type="checkbox" id="tmAutoRunInput">
+            Use it in the automatic run
+          </label>
+          <label class="check" style="margin-top:8px;">
+            <input type="checkbox" id="tmManualBoxInput">
+            Show "Consider previous days' history" next to the website's Assign button
+          </label>
+          <p class="subtitle" style="margin-top:6px;">
+            With the box hidden, manual runs never use history. With it shown, each person
+            decides per run (remembered per browser, ticked by default).
+          </p>
+        </div>
+      </details>
+
+      <details class="tm-section" open>
+        <summary>2 · Which days and assignments count <span class="tm-summary-now" id="tmSum2"></span></summary>
+        <div class="tm-section-body">
+          <div class="tm-group-title">Memory length</div>
+          <div class="tm-range-row">
+            <input type="range" id="tmDaysRange" min="1" max="365" step="1">
+            <input type="number" id="tmDaysInput" min="1" max="365" step="1" style="width:78px;">
+            <span style="font-size:0.8rem;color:var(--muted);">days (1–365) — the default for every method; each method can override it</span>
+          </div>
+
+          <div class="tm-group-title">Days of history stored</div>
+          <div class="tm-range-row">
+            <input type="number" id="tmKeepInput" min="14" max="365" step="1" style="width:78px;">
+            <span style="font-size:0.8rem;color:var(--muted);">days (14–365). Older days are dropped as new ones are recorded; no method can look back further than this.</span>
+          </div>
+
+          <div class="tm-group-title">What counts as a "day"</div>
+          <div class="tm-options" id="tmDaysModeOptions"></div>
+
+          <div class="tm-group-title">Which assignment is a day's final one</div>
+          <div class="tm-options" id="tmSourceOptions"></div>
+
+          <label class="check" style="margin-top:14px;">
+            <input type="checkbox" id="tmFixedInput">
+            Count fixed-rotation assignments toward a person's load
+          </label>
+        </div>
+      </details>
+
+      <details class="tm-section" open>
+        <summary>3 · Fairness method <span class="tm-summary-now" id="tmSumMethod"></span></summary>
+        <div class="tm-section-body">
+          <p class="subtitle" style="margin-top:6px;">
+            What is stored is plain fact (who was present, which tasks were on the table, their weights,
+            who got what) and <b>never depends on the method</b>. The method only decides how those facts
+            become each person's starting load today, so you can switch whenever you like and the whole past
+            is used immediately. Meters come from a simulated 300-day replay of a 5-person team (30 runs, each
+            method with its own sensible settings); more dots is better. The
+            README explains each method in depth.
+          </p>
+          <div class="tm-method-grid" id="tmMethodGrid" role="radiogroup" aria-label="Fairness method"></div>
+          <div class="tm-method-detail" id="tmMethodDetail"></div>
+
+          <div class="tm-group-title">Use a different method on certain weekdays</div>
+          <div class="tm-weekday-grid" id="tmWeekdayMethods"></div>
+          <p class="subtitle" style="margin-top:6px;">Leave a day on "default" to use the method picked above. Each day's own method is part of the duplicate check, so changing it lets a new assignment be made that day.</p>
+
+          <div class="tm-group-title">Try the methods on your real history</div>
+          <div class="tm-btnrow">
+            <a class="add-btn" href="methods.html" target="_blank" style="text-decoration:none;display:inline-block;margin-right:8px">How the methods work</a>
+            <button class="add-btn" id="tmCompareBtn" type="button">Compare all methods on my history</button>
+            <button id="tmExportBtn" type="button">Download history (JSON)</button>
+          </div>
+          <p class="subtitle" style="margin-top:6px;">Shows each person's starting load today under every method (higher = fewer tasks today), using your current unsaved settings. Needs the admin password from the Save panel.</p>
+          <div class="tm-compare" id="tmCompareOut"></div>
+        </div>
+      </details>
+
+      <details class="tm-section">
+        <summary>4 · How load is calculated <span class="tm-summary-now" id="tmSum3"></span></summary>
+        <div class="tm-section-body">
+          <div id="tmGroupNorm">
+          <div class="tm-group-title">Normalize each day's load to</div>
+          <div class="tm-options" id="tmNormalizeOptions"></div>
+          <p class="subtitle" style="margin-top:6px;">
+            A person's load for a past day is divided by this, so each day becomes a fraction.
+            The summed fractions are scaled back to today's weights before use. Applies to every method.
+          </p>
+          </div>
+
+          <div id="tmTallyOnly">
+            <div class="tm-group-title">Combine the remembered days by <span style="color:var(--muted);">(The Tally only)</span></div>
+            <div class="tm-options" id="tmCombineOptions"></div>
+
+            <div class="tm-group-title">A day a person was absent <span style="color:var(--muted);">(The Tally only)</span></div>
+            <div class="tm-options" id="tmAbsentOptions"></div>
+          </div>
+          <p class="subtitle" id="tmTallyNote" style="margin-top:8px;"></p>
+        </div>
+      </details>
+
+      <details class="tm-section">
+        <summary>5 · Someone with no history <span class="tm-summary-now" id="tmSum4"></span></summary>
+        <div class="tm-section-body">
+          <p class="subtitle" style="margin-bottom:6px;">
+            For a person who wasn't present on any remembered day in the window (for example,
+            just added): what load do they start from?
+          </p>
+          <div class="tm-options" id="tmNewPersonOptions"></div>
+        </div>
+      </details>
+
+      <details class="tm-section">
+        <summary>6 · Showing it in reports <span class="tm-summary-now" id="tmSum5"></span></summary>
+        <div class="tm-section-body">
+          <p class="subtitle" style="margin-bottom:6px;">
+            The "considered" indicator appears only where history actually fed the result. The method
+            line also appears on a run that had no earlier days yet. Where it appears:
+          </p>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmIndCardInput">
+            On the Telegram image card (footer row)
+          </label>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmIndCaptionInput">
+            In the Telegram caption (line under the title)
+          </label>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmIndWebsiteInput">
+            On the website (status line and Today's Assignments cards)
+          </label>
+
+          <div class="tm-group-title">What the report says (everywhere the indicator shows)</div>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmRepMethodInput">
+            The method and its main parameters (window, normalizer, half-life, scale ...)
+          </label>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmRepLoadsInput">
+            Each person's starting load: a pill beside their name, and a number on the "not assigned" chips
+          </label>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmRepWeightsInput">
+            Each task's weight in the Telegram caption (the image card always shows it)
+          </label>
+
+          <div class="tm-group-title">Icon</div>
+          <div class="tm-emoji-row" id="tmEmojiPresets"></div>
+          <div class="row" style="border-bottom:none;padding-bottom:0;">
+            <label for="tmEmojiCustom" style="font-size:0.8rem;color:var(--muted);">Custom emoji</label>
+            <input type="text" id="tmEmojiCustom" maxlength="24" style="width:90px;">
+          </div>
+          <div class="tm-preview" id="tmPreview"></div>
+        </div>
+      </details>
+
+    </div>
+
+    <div id="tmWarnings"></div>
+  </div>
+
   <div class="panel">
     <h2>Appearance</h2>
     <div class="row">
@@ -271,6 +601,16 @@
       silence in that case.
     </p>
     <label class="check" style="margin-top:14px;">
+      <input type="checkbox" id="mainPageStartInput">
+      Main page starts from today's automatic setup instead of the visitor's last-used ticks
+    </label>
+    <p class="subtitle" style="margin-top:4px;">
+      Off (default): the website remembers each browser's last People/Task ticks. On: every visit
+      starts with the people and tasks today's automatic run would use (default-ticked, present /
+      active today, with fixed rotation as configured). Only the ticks are affected; theme and
+      history checkbox keep their own memory.
+    </p>
+    <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
       Show the "no fixed rotation today" warning for the automated run
     </label>
@@ -298,6 +638,7 @@ const DEFAULT_APPEARANCE = {
   photoSilent: false,
   captionSilent: false,
   warnOnAutomatedRotationFallback: true,
+  mainPageStartFromAutomatic: false,
 };
 const CAPTION_MODE_OPTIONS = [
   { value: "none", label: "No caption" },
@@ -305,7 +646,48 @@ const CAPTION_MODE_OPTIONS = [
   { value: "separateMessage", label: "Caption as separate message" },
 ];
 
-let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { ...DEFAULT_APPEARANCE }, automatedRunDays: WEEKDAYS.slice(0, 5) };
+// Mirrors DEFAULT_TASK_MEMORY in worker/config.js (off by default).
+const DEFAULT_HOLIDAYS = {
+  skipHolidays: false, providerUrl: "https://holidayapi.ir/gregorian/{yyyy}/{mm}/{dd}",
+  retries: 3, retryDelaySeconds: 2, timeoutSeconds: 8, onFailure: "generate",
+  extraHolidayDates: [], workdayDates: [],
+};
+const DEFAULT_TASK_MEMORY = {
+  enabled: false,
+  memoryDays: 7,
+  keepDays: 120,
+  methodDays: {},
+  daysMode: "generatedDays",
+  source: "all",
+  countFixedRotation: true,
+  normalizeTo: "maxPossible",
+  absentDays: "zero",
+  combine: "sum",
+  newPersonLoad: "mean",
+  method: "tally",
+  methodByWeekday: {},
+  halfLifeDays: 7,
+  ledgerCredit: true,
+  clockAllowance: 1,
+  seasonDays: 28,
+  cooldownDays: 3,
+  lotteryTemperature: 2,
+  wheelPenalty: 1,
+  envyDays: 14,
+  envyBound: 1,
+  capacities: {},
+  reportShowMethod: true,
+  reportShowStartLoads: true,
+  reportShowWeights: true,
+  useInAutomatedRun: true,
+  allowManualCheckbox: true,
+  indicatorOnCard: true,
+  indicatorInCaption: true,
+  indicatorOnWebsite: true,
+  indicatorEmoji: "\u23F3",
+};
+
+let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { ...DEFAULT_APPEARANCE }, automatedRunDays: WEEKDAYS.slice(0, 5), taskMemory: { ...DEFAULT_TASK_MEMORY }, holidays: { ...DEFAULT_HOLIDAYS } };
 
 function setStatus(msg, kind) {
   const el = document.getElementById("status");
@@ -405,6 +787,7 @@ function renderPeople() {
         }
         p.presenceDays = base;
         chipLabel.classList.toggle("checked", cb.checked);
+        if (pruneAdminSchedules(true).length === 0) renderFixedSchedules();
       });
       chipLabel.appendChild(cb);
       chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));
@@ -550,6 +933,28 @@ document.getElementById("addTaskBtn").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------- Fixed Rotation
+// A person absent on a weekday can't be a fixed-rotation pick for it: drop
+// such picks (same rule the Worker applies) and say so.
+function pruneAdminSchedules(announce) {
+  const removed = [];
+  for (const task of Object.keys(state.fixedSchedules)) {
+    const sched = state.fixedSchedules[task];
+    for (const day of Object.keys(sched)) {
+      const p = state.people.find(x => x.name === sched[day]);
+      if (p && p.presenceDays && !p.presenceDays.includes(day)) {
+        removed.push(`${p.name} (${task}, ${day.slice(0, 3)})`);
+        delete sched[day];
+      }
+    }
+    if (Object.keys(sched).length === 0) delete state.fixedSchedules[task];
+  }
+  if (removed.length) {
+    renderFixedSchedules();
+    if (announce) setStatus("Removed from fixed rotation because they're absent that day: " + removed.join(", ") + ". Save to apply.", "info");
+  }
+  return removed;
+}
+
 function renderFixedSchedules() {
   const container = document.getElementById("fixedScheduleRows");
   container.innerHTML = "";
@@ -621,6 +1026,8 @@ function renderFixedSchedules() {
       select.appendChild(noneOpt);
 
       state.people.forEach((p) => {
+        // Absent that weekday -> not selectable for it.
+        if (p.presenceDays && !p.presenceDays.includes(day)) return;
         const opt = document.createElement("option");
         opt.value = p.name;
         opt.textContent = p.name;
@@ -671,9 +1078,10 @@ function renderAutomatedRunDays() {
         ? [...new Set([...base, day])]
         : base.filter(d => d !== day);
       chipLabel.classList.toggle("checked", cb.checked);
-      // The fixed-rotation gap warnings are computed against
-      // automatedRunDays -- keep them in sync.
+      // The fixed-rotation gap warnings and the task-memory warnings are
+      // computed against automatedRunDays -- keep them in sync.
       renderFixedSchedules();
+      updateMemoryWarnings();
     });
     chipLabel.appendChild(cb);
     chipLabel.appendChild(document.createTextNode(day.slice(0, 3)));
@@ -706,6 +1114,747 @@ function renderCaptionModeOptions() {
   });
 }
 
+// ---------------------------------------------------------------- Task Memory
+const TM_DAYS_MODE = [
+  { value: "generatedDays", label: "Days something was generated",
+    desc: "The most recent days that have a remembered assignment. Days with nothing posted are skipped, so a weekend gap doesn't eat into the memory." },
+  { value: "automatedDays", label: "Automatic run days",
+    desc: "The most recent weekdays that are Automatic Run Days, whether or not something was generated that day." },
+];
+const TM_SOURCE = [
+  { value: "all", label: "Every day's final assignment",
+    desc: "One assignment represents each day: the last one sent to the channel (a resend counts), manual or automatic." },
+  { value: "automatedOnly", label: "Only days whose final assignment was automatic",
+    desc: "Still one per day -- the final one. If that final one was manual, the day is left out." },
+];
+const TM_NORMALIZE = [
+  { value: "maxPossible", label: "Max possible weight",
+    desc: "Sum of every task's weight in the config, even tasks that weren't active or assigned that day." },
+  { value: "maxActive", label: "Max weight of the tasks active that weekday",
+    desc: "Sum of the weights of tasks whose active days include that weekday, assigned or not." },
+  { value: "maxAssigned", label: "Max assigned weight",
+    desc: "The total weight actually handed out that day." },
+];
+const TM_ABSENT = [
+  { value: "zero", label: "Count as zero load", desc: "The day still counts, with nothing done." },
+  { value: "skip", label: "Skip it",
+    desc: "Leave the day out; their average over the days they were present is scaled to the whole window." },
+];
+const TM_COMBINE = [
+  { value: "sum", label: "Add the days up",
+    desc: "A heavy stretch gives everyone else a big head start (strong relief)." },
+  { value: "mean", label: "Average of the days",
+    desc: "Their average daily share, scaled to today (gentler, never more than one day's worth)." },
+];
+const TM_NEW_PERSON = [
+  { value: "zero", label: "Start at zero", desc: "They'll be favored until they catch up." },
+  { value: "mean", label: "Start at the mean of everyone else", desc: "Treated as an average person." },
+  { value: "randomExisting", label: "Start at a random pick of the others' loads", desc: "Copies one existing person's load, chosen at random." },
+  { value: "randomRange", label: "Start at a random load in the possible range",
+    desc: "Anywhere from 0 up to the largest load anyone could have built over the window — can start high." },
+];
+const TM_EMOJI_PRESETS = ["⏳", "⌛", "\u{1F570}️", "\u{1F553}", "\u{1F4C5}"];
+
+// ---- Fairness methods (mirrors worker/fairness.js; ids must match) ----
+// Lab figures: average of 30 simulated 300-day runs of a 5-person team with
+// uneven attendance and part-time people (lower is better for every column).
+const TM_LAB = {"none":{"totSD":181.5,"rateSD":0.19,"capSD":69.9,"roll":6.35,"b2b":0.267,"burst":1.05,"envy":3.56},"tally":{"totSD":23.0,"rateSD":0.91,"capSD":164.9,"roll":5.06,"b2b":0.202,"burst":3.11,"envy":1.84},"fairshift":{"totSD":161.6,"rateSD":0.06,"capSD":44.4,"roll":5.41,"b2b":0.228,"burst":1.26,"envy":2.46},"ledger":{"totSD":20.5,"rateSD":1.02,"capSD":187.1,"roll":4.08,"b2b":0.102,"burst":3.63,"envy":1.66},"fading":{"totSD":38.3,"rateSD":0.81,"capSD":143.5,"roll":3.13,"b2b":0.071,"burst":3.43,"envy":1.02},"clock":{"totSD":114.9,"rateSD":0.27,"capSD":40.0,"roll":3.76,"b2b":0.039,"burst":1.94,"envy":1.65},"season":{"totSD":22.4,"rateSD":0.94,"capSD":169.8,"roll":3.51,"b2b":0.108,"burst":3.42,"envy":1.21},"cooldown":{"totSD":109.6,"rateSD":0.31,"capSD":45.0,"roll":3.63,"b2b":0.044,"burst":2.39,"envy":1.62},"lottery":{"totSD":21.9,"rateSD":1.12,"capSD":207.7,"roll":4.97,"b2b":0.172,"burst":3.29,"envy":2.11},"wheel":{"totSD":42.8,"rateSD":0.78,"capSD":136.9,"roll":3.65,"b2b":0.118,"burst":3.16,"envy":1.25},"envy":{"totSD":42.4,"rateSD":0.78,"capSD":136.7,"roll":3.92,"b2b":0.144,"burst":3.19,"envy":0.85},"quota":{"totSD":146.1,"rateSD":0.11,"capSD":16.8,"roll":4.18,"b2b":0.061,"burst":2.68,"envy":1.91}};
+const TM_METERS = [
+  { key: "totSD", label: "Equal totals" },
+  { key: "rateSD", label: "Equal per day present" },
+  { key: "roll", label: "Smooth weeks" },
+  { key: "burst", label: "Gentle comebacks" },
+];
+const TM_PARAMS = {
+  halfLifeDays: { label: "Half-life (days)", hint: "How fast old days fade: a day this many days ago counts half as much.", min: 1, max: 60, step: 1, int: true },
+  clockAllowance: { label: "Late allowance (fair shares)", hint: "How far behind someone returning from an absence starts. 0 = level with the others, 1 = one fair share behind.", min: 0, max: 3, step: 0.1 },
+  seasonDays: { label: "Season length (days)", hint: "Scores reset every N days (counted from a fixed Saturday, so 7 = Saturday to Friday).", min: 2, max: 60, step: 1, int: true },
+  cooldownDays: { label: "Taper length (days)", hint: "Yesterday counts most, then fewer and fewer, down to nothing after this many days.", min: 2, max: 7, step: 1, int: true },
+  lotteryTemperature: { label: "Temperature", hint: "Low = nearly always the person owed most; high = closer to a fair coin. In task-weight units.", min: 0.5, max: 10, step: 0.5 },
+  wheelPenalty: { label: "Repeat-task penalty", hint: "Extra load for a person who recently did the same task again (× the task's weight per repeat in their last 5 jobs).", min: 0, max: 3, step: 0.25 },
+  envyDays: { label: "Envy window (days)", hint: "The look-back in which two people's loads may not drift apart.", min: 3, max: 30, step: 1, int: true },
+  envyBound: { label: "Allowed gap (× heaviest task)", hint: "If someone's recent load exceeds another's by more than this, a task is moved.", min: 0.5, max: 3, step: 0.25 },
+};
+const TM_METHODS = [
+  { id: "none", name: "No memory", tag: "Every day is judged on its own.",
+    how: "Starting loads are all zero, so each day's tasks are simply spread as evenly as possible. History is still recorded for when you want it.",
+    pick: "You want no coupling between days, or you rely on fixed rotation alone.",
+    watch: "Whoever shows up most carries the most; totals drift far apart over time.", params: [], uses: [] },
+  { id: "tally", name: "The Tally", tag: "Everyone ends up with the same total.", badge: "Default",
+    how: "Each remembered day adds that person's normalized load to their starting score, scaled to today's weights. Someone who carried a lot recently starts high and gets less. Combine (sum / average) and absent-day handling are set below.",
+    pick: "Equal totals over the window matter most and people attend about equally.",
+    watch: "A person back from a long absence has little recorded, so they receive a big catch-up share.",
+    params: [], uses: ["window", "normalizer", "combine", "newPerson"] },
+  { id: "fairshift", name: "The Fair Shift", tag: "Equal average per day you were there.",
+    how: "Averages each person's load over the days they were present and skips days they were away, so absence never earns a head start or a penalty.",
+    pick: "Attendance varies a lot and people shouldn't be punished or rewarded for being away.",
+    watch: "Raw totals stay far apart (frequent attenders work more overall). That is the intent. Works best with the 'max active' normalizer.",
+    params: [], uses: ["window", "normalizer", "newPerson"] },
+  { id: "ledger", name: "The Ledger", tag: "A running account of who owes whom.",
+    how: "Every day each present person is charged what they did and credited their fair share; with credit on, absentees are also credited their share (rest earned), so the balance tracks fairness over everything remembered.",
+    pick: "You want the tightest equal totals of any method.",
+    watch: "People returning after an absence face large debts (biggest comeback burst). Turn credit off to avoid it.",
+    params: ["ledgerCredit"], uses: ["window", "normalizer", "newPerson"] },
+  { id: "fading", name: "The Fading Memory", tag: "Recent work counts, old work fades.",
+    how: "Past loads are weighted by exponential decay: last week matters a lot, last month little. Smoothest week-to-week load of all methods here.",
+    pick: "The goal is relief after heavy days, not accounting for a whole season.",
+    watch: "Totals stay moderately uneven; long-gone heavy days are forgotten.",
+    params: ["halfLifeDays"], uses: ["window", "normalizer", "newPerson"] },
+  { id: "clock", name: "The Fair Clock", tag: "Whoever has worked least per day present goes next.",
+    how: "Each person has a virtual run-time (like a fair CPU scheduler) that only advances on days they are present. Returners are lifted to just behind the pack instead of getting the whole backlog.",
+    pick: "You mainly want to avoid someone being hit on back-to-back days and gentle returns.",
+    watch: "Totals are not equalised, because it follows rate rather than sum.",
+    params: ["clockAllowance"], uses: ["window", "normalizer"] },
+  { id: "season", name: "The Season", tag: "Equal totals within a period, then a clean slate.",
+    how: "Scores accumulate over a season of fixed length and reset at its end, so old history can't haunt anyone.",
+    pick: "You want the totals fairness of The Tally with a regular fresh start.",
+    watch: "Right after a reset the first days have no protection; comebacks still get a catch-up.",
+    params: ["seasonDays"], uses: ["normalizer", "newPerson"] },
+  { id: "cooldown", name: "The Cooldown", tag: "Heavy today, light tomorrow.",
+    how: "A heavy day raises tomorrow's starting load and the effect tapers over the next few days.",
+    pick: "Your goal is exactly: someone who did a lot recently gets a rest. Few back-to-back heavy days.",
+    watch: "Only short-term; totals stay uneven.", params: ["cooldownDays"], uses: ["normalizer", "newPerson"] },
+  { id: "lottery", name: "The Weighted Lottery", tag: "Chance proportional to what you're owed.",
+    how: "Uses the Ledger's balances, but the person for each task is drawn at random weighted by how far behind they are, so nobody can predict or game it.",
+    pick: "People mind being told the order more than the outcome.",
+    watch: "High variance: fair on average, sometimes unlucky in a given week.",
+    params: ["lotteryTemperature"], uses: ["window", "normalizer", "newPerson"] },
+  { id: "wheel", name: "The Rotation Wheel", tag: "Turns, so the same job doesn't stick to the same person.",
+    how: "Fading-memory loads plus a penalty for repeating a task you did recently, which spreads the unpleasant tasks around.",
+    pick: "You mind who does WHICH task, not only how much.",
+    watch: "Mixed signals if a task is rare: a repeat is sometimes unavoidable.",
+    params: ["halfLifeDays", "wheelPenalty"], uses: ["window", "normalizer", "newPerson"] },
+  { id: "envy", name: "The Envy Bound", tag: "Nobody should wish for another's load.",
+    how: "Fading-memory loads, then tasks are moved from whoever is far ahead to whoever is far behind until no two people differ by more than the allowed gap over the window.",
+    pick: "You want the lowest 'envy' between people over a couple of weeks.",
+    watch: "Totals are only loosely held together.",
+    params: ["halfLifeDays", "envyDays", "envyBound"], uses: ["window", "normalizer", "newPerson"] },
+  { id: "quota", name: "The Quota", tag: "Fair share in proportion to capacity.",
+    how: "Each person has a capacity (1 = full time, 0.5 = half). A task costs a half-time person double, so they are given fewer or lighter tasks.",
+    pick: "People genuinely differ in availability and 'fair' should mean proportional.",
+    watch: "Raw totals look unequal on purpose; the lab's capacity-adjusted spread is the best of all methods.",
+    params: ["halfLifeDays", "capacities"], uses: ["window", "normalizer", "newPerson"] },
+];
+const TM_USES = { window: "memory length and day rules", normalizer: "the normalizer", combine: "combine / absent-day rules", newPerson: "the no-history rule" };
+const tmMethod = (id) => TM_METHODS.find((m) => m.id === id) || TM_METHODS[1];
+
+function tmMeterDots(id, key) {
+  const vals = TM_METHODS.map((m) => TM_LAB[m.id][key]).sort((a, b) => a - b);
+  const rank = vals.indexOf(TM_LAB[id][key]);
+  return 5 - Math.floor((rank * 5) / vals.length);
+}
+function tmDotsEl(n) {
+  const w = document.createElement("span");
+  w.className = "tm-dots";
+  w.setAttribute("aria-label", n + " of 5");
+  for (let i = 0; i < 5; i++) { const d = document.createElement("i"); if (i < n) d.className = "on"; w.appendChild(d); }
+  return w;
+}
+
+function buildMethodGrid() {
+  const grid = document.getElementById("tmMethodGrid");
+  grid.innerHTML = "";
+  TM_METHODS.forEach((m) => {
+    const label = document.createElement("label");
+    label.className = "tm-mcard";
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "tmMethod"; radio.value = m.id; radio.checked = tm().method === m.id;
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      tm().method = m.id;
+      renderMethodDetail(); updateMemorySummaries(); updateMemoryWarnings(); updateMemoryPreview();
+    });
+    const name = document.createElement("span");
+    name.className = "tm-mname";
+    name.textContent = m.name;
+    if (m.badge) { const b = document.createElement("span"); b.className = "tm-badge"; b.textContent = m.badge; name.appendChild(b); }
+    const tag = document.createElement("span");
+    tag.className = "tm-mtag"; tag.textContent = m.tag;
+    label.append(radio, name, tag);
+    if (m.id !== "none") {
+      const meters = document.createElement("span");
+      meters.className = "tm-meters";
+      TM_METERS.forEach((x) => { const t = document.createElement("span"); t.textContent = x.label; meters.append(t, tmDotsEl(tmMeterDots(m.id, x.key))); });
+      label.appendChild(meters);
+    }
+    grid.appendChild(label);
+  });
+}
+
+function paramRow(key) {
+  const def = TM_PARAMS[key];
+  const row = document.createElement("div");
+  row.className = "tm-param";
+  const lbl = document.createElement("div");
+  lbl.className = "lbl";
+  lbl.innerHTML = "";
+  lbl.append(def.label);
+  const small = document.createElement("small"); small.textContent = def.hint; lbl.appendChild(small);
+  const range = document.createElement("input");
+  range.type = "range"; range.min = def.min; range.max = def.max; range.step = def.step; range.value = tm()[key];
+  const num = document.createElement("input");
+  num.type = "number"; num.min = def.min; num.max = def.max; num.step = def.step; num.value = tm()[key];
+  const apply = (raw, from) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < def.min || n > def.max || (def.int && !Number.isInteger(n))) return;
+    tm()[key] = n;
+    if (from !== "range") range.value = n;
+    if (from !== "num") num.value = n;
+    updateMemorySummaries(); updateMemoryPreview();
+  };
+  range.oninput = () => apply(range.value, "range");
+  num.oninput = () => apply(num.value, "num");
+  row.append(lbl, range, num);
+  return row;
+}
+
+// "Days considered by this method": the general length, or its own.
+function daysRow(id) {
+  const row = document.createElement("div");
+  row.className = "tm-param";
+  const own = Number.isInteger((tm().methodDays || {})[id]);
+  const lbl = document.createElement("div"); lbl.className = "lbl";
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = own;
+  const l = document.createElement("label"); l.className = "check"; l.append(cb, " Own number of days for this method");
+  const sm = document.createElement("small");
+  lbl.append(l, sm);
+  const range = document.createElement("input"); range.type = "range"; range.min = 1; range.max = 365; range.step = 1;
+  const num = document.createElement("input"); num.type = "number"; num.min = 1; num.max = 365; num.step = 1;
+  const show = () => {
+    const cur = (tm().methodDays || {})[id];
+    const n = Number.isInteger(cur) ? cur : tm().memoryDays;
+    range.value = n; num.value = n; range.disabled = num.disabled = !cb.checked;
+    sm.textContent = cb.checked ? "Looks back " + n + " " + (tm().daysMode === "automatedDays" ? "automatic-run days" : "days") + " (stored: " + tm().keepDays + ")."
+      : "Uses the general length: " + tm().memoryDays + " days (section 2).";
+  };
+  const set = (n) => {
+    if (!Number.isInteger(n) || n < 1 || n > 365) return;
+    tm().methodDays = { ...(tm().methodDays || {}), [id]: n };
+    show(); updateMemorySummaries(); updateMemoryPreview(); updateMemoryWarnings();
+  };
+  cb.onchange = () => {
+    if (cb.checked) set(tm().memoryDays);
+    else { const d = { ...(tm().methodDays || {}) }; delete d[id]; tm().methodDays = d; show(); updateMemorySummaries(); updateMemoryPreview(); updateMemoryWarnings(); }
+  };
+  range.oninput = () => set(Number(range.value));
+  num.oninput = () => set(Number(num.value));
+  show();
+  row.append(lbl, range, num);
+  return row;
+}
+
+function renderMethodDetail() {
+  const m = tmMethod(tm().method);
+  const box = document.getElementById("tmMethodDetail");
+  box.innerHTML = "";
+  const h = document.createElement("h3"); h.textContent = m.name + " — " + m.tag; box.appendChild(h);
+  const how = document.createElement("div"); how.textContent = m.how; box.appendChild(how);
+  const dl = document.createElement("dl");
+  [["Pick it when", m.pick], ["Watch for", m.watch]].forEach(([t, d]) => {
+    const dt = document.createElement("dt"); dt.textContent = t;
+    const dd = document.createElement("dd"); dd.textContent = d;
+    dl.append(dt, dd);
+  });
+  box.appendChild(dl);
+  if (m.id !== "none") {
+    const lab = TM_LAB[m.id], none = TM_LAB.none;
+    const chips = document.createElement("div");
+    chips.className = "tm-lab";
+    const add = (html) => { const c = document.createElement("span"); c.innerHTML = html; chips.appendChild(c); };
+    add("Spread of totals <b>" + lab.totSD + "</b> (no memory " + none.totSD + ")");
+    add("Spread of daily average <b>" + lab.rateSD + "</b>");
+    add("Back-to-back heavy days <b>" + Math.round(lab.b2b * 100) + "%</b>");
+    add("Comeback <b>×" + lab.burst + "</b> a fair share");
+    add("Envy gap <b>" + lab.envy + "</b> tasks");
+    add("Capacity-adjusted spread <b>" + lab.capSD + "</b>");
+    box.appendChild(chips);
+  }
+  m.params.forEach((key) => {
+    if (key === "ledgerCredit") {
+      const row = document.createElement("div"); row.className = "tm-param";
+      const lab = document.createElement("label"); lab.className = "check"; lab.style.flex = "1 1 100%";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = tm().ledgerCredit !== false;
+      cb.onchange = () => { tm().ledgerCredit = cb.checked; updateMemorySummaries(); updateMemoryPreview(); };
+      lab.append(cb, " Absence earns credit (people away are owed their share; returners catch up). Off = only days you were present count.");
+      row.appendChild(lab); box.appendChild(row);
+    } else if (key === "capacities") {
+      const row = document.createElement("div"); row.className = "tm-param"; row.style.flexDirection = "column"; row.style.alignItems = "stretch";
+      const t = document.createElement("div"); t.className = "lbl"; t.append("Capacity per person");
+      const sm = document.createElement("small"); sm.textContent = "1 = full share, 0.5 = half-time (receives about half), up to 2. Anyone left at 1 is normal."; t.appendChild(sm);
+      row.appendChild(t);
+      (state.people || []).forEach((p) => {
+        const r = document.createElement("div"); r.className = "tm-param"; r.style.borderTop = "none"; r.style.padding = "2px 0";
+        const nm = document.createElement("span"); nm.className = "lbl"; nm.textContent = p.name;
+        const range = document.createElement("input"); range.type = "range"; range.min = 0.1; range.max = 2; range.step = 0.05;
+        const num = document.createElement("input"); num.type = "number"; num.min = 0.1; num.max = 2; num.step = 0.05;
+        const cur = Number((tm().capacities || {})[p.name]) || 1;
+        range.value = cur; num.value = cur;
+        const apply = (raw, from) => {
+          const n = Number(raw);
+          if (!Number.isFinite(n) || n < 0.1 || n > 2) return;
+          tm().capacities = { ...(tm().capacities || {}) };
+          if (n === 1) delete tm().capacities[p.name]; else tm().capacities[p.name] = n;
+          if (from !== "range") range.value = n;
+          if (from !== "num") num.value = n;
+          updateMemoryPreview();
+        };
+        range.oninput = () => apply(range.value, "range"); num.oninput = () => apply(num.value, "num");
+        r.append(nm, range, num); row.appendChild(r);
+      });
+      box.appendChild(row);
+    } else {
+      box.appendChild(paramRow(key));
+    }
+  });
+  if (m.id !== "none") box.appendChild(daysRow(m.id));
+  const uses = document.createElement("div");
+  uses.className = "tm-uses";
+  uses.textContent = m.uses.length
+    ? "Also uses your settings for: " + m.uses.map((u) => TM_USES[u]).join(", ") + "."
+    : "Needs no further settings.";
+  box.appendChild(uses);
+
+  document.getElementById("tmTallyOnly").style.display = m.id === "tally" ? "" : "none";
+  document.getElementById("tmTallyNote").textContent =
+    m.id === "tally" ? "" :
+    m.id === "fairshift" ? "The Fair Shift always averages and skips days a person was absent, so the combine and absent-day choices don't apply."
+    : m.id === "none" ? "No memory ignores everything on this page."
+    : "Combine and absent-day rules belong to The Tally; " + m.name + " handles absence in its own way.";
+  document.getElementById("tmGroupNorm").style.opacity = m.id === "none" ? "0.45" : "";
+}
+
+function renderWeekdayMethods() {
+  const box = document.getElementById("tmWeekdayMethods");
+  box.innerHTML = "";
+  WEEKDAYS.forEach((wd) => {
+    const lab = document.createElement("label");
+    lab.append(wd);
+    const sel = document.createElement("select");
+    const def = document.createElement("option"); def.value = ""; def.textContent = "default"; sel.appendChild(def);
+    TM_METHODS.forEach((m) => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; sel.appendChild(o); });
+    sel.value = (tm().methodByWeekday || {})[wd] || "";
+    sel.onchange = () => {
+      tm().methodByWeekday = { ...(tm().methodByWeekday || {}) };
+      if (sel.value) tm().methodByWeekday[wd] = sel.value; else delete tm().methodByWeekday[wd];
+      updateMemorySummaries();
+    };
+    lab.appendChild(sel);
+    box.appendChild(lab);
+  });
+}
+
+function tmNormText() { return ({ maxPossible: "max possible", maxActive: "max active", maxAssigned: "max assigned" })[tm().normalizeTo]; }
+// Mirrors methodParamPhrases() in worker/fairness.js (for the preview only).
+function tmMethodLine() {
+  const m = tm(), meth = tmMethod(m.method), norm = "÷ " + tmNormText();
+  const win = "last " + ((m.methodDays || {})[m.method] || m.memoryDays) + (m.daysMode === "automatedDays" ? " automatic-run days" : " days");
+  const parts = ({
+    none: [],
+    tally: [win, norm, m.combine === "mean" ? "average" : "sum", m.absentDays === "skip" ? "absent days skipped" : "absent days = 0"],
+    fairshift: [win, norm, "average per day present"],
+    ledger: [win, norm, m.ledgerCredit !== false ? "absence earns credit" : "no credit for absence"],
+    fading: [win, norm, "half-life " + m.halfLifeDays + " d"],
+    clock: [win, norm, "late allowance " + m.clockAllowance],
+    season: [m.seasonDays + "-day season", norm],
+    cooldown: ["taper over " + m.cooldownDays + " d", norm],
+    lottery: [win, norm, "temperature " + m.lotteryTemperature],
+    wheel: [win, norm, "half-life " + m.halfLifeDays + " d", "repeat penalty " + m.wheelPenalty],
+    envy: [win, norm, m.envyDays + "-day gap ≤ " + m.envyBound + "× heaviest task"],
+    quota: [win, norm, "half-life " + m.halfLifeDays + " d", "capacity-weighted"],
+  })[m.method] || [];
+  if (m.method !== "none") parts.push("× task total 12");
+  return [meth.name, ...parts].join(" · ");
+}
+
+async function tmCompare() {
+  const out = document.getElementById("tmCompareOut");
+  const password = document.getElementById("passwordInput").value;
+  if (WORKER_URL.includes("REPLACE-ME")) { out.textContent = "Set WORKER_URL in admin.html first."; return; }
+  if (!password) { out.textContent = "Enter the admin password in the Save panel first."; return; }
+  out.textContent = "Computing…";
+  try {
+    const resp = await fetch(WORKER_URL + "/history/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + password },
+      body: JSON.stringify({ taskMemory: { ...tm(), capacities: tm().capacities || {} } }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.status);
+    renderCompare(data);
+  } catch (err) { out.textContent = "Failed: " + err.message; }
+}
+
+function renderCompare(data) {
+  const out = document.getElementById("tmCompareOut");
+  out.innerHTML = "";
+  if (!data.entries) { out.textContent = "No history remembered yet — nothing to compare."; return; }
+  const note = document.createElement("div");
+  note.className = "subtitle";
+  note.textContent = "Starting load today (" + data.weekday + "), from " + data.daysUsed + " remembered day(s), scale ×" + Math.round(data.scale * 100) / 100 + ". Red = starts highest (fewest tasks), blue = lowest.";
+  out.appendChild(note);
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  head.appendChild(document.createElement("th"));
+  TM_METHODS.forEach((m) => { const th = document.createElement("th"); th.textContent = m.name.replace(/^The /, ""); if (m.id === tm().method) th.className = "cur"; head.appendChild(th); });
+  table.appendChild(head);
+  data.people.forEach((p) => {
+    const tr = document.createElement("tr");
+    const th = document.createElement("td"); th.textContent = p; tr.appendChild(th);
+    TM_METHODS.forEach((m) => {
+      const vals = data.people.map((q) => data.results[m.id][q]);
+      const v = data.results[m.id][p];
+      const td = document.createElement("td");
+      td.textContent = v.toFixed(1);
+      if (Math.max(...vals) !== Math.min(...vals)) { if (v === Math.max(...vals)) td.className = "hi"; else if (v === Math.min(...vals)) td.className = "lo"; }
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+  out.appendChild(table);
+}
+
+// ---- Iranian holidays panel ----
+const HOL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function holLines(id) { return document.getElementById(id).value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean); }
+function readHolidays() {
+  const num = (id, d) => { const v = parseInt(document.getElementById(id).value, 10); return Number.isFinite(v) ? v : d; };
+  return {
+    skipHolidays: document.getElementById("holSkipInput").checked,
+    providerUrl: document.getElementById("holUrlInput").value.trim() || DEFAULT_HOLIDAYS.providerUrl,
+    retries: num("holRetriesInput", 3), retryDelaySeconds: num("holDelayInput", 2), timeoutSeconds: num("holTimeoutInput", 8),
+    onFailure: document.getElementById("holOnFailureInput").value,
+    extraHolidayDates: holLines("holExtraInput").filter(d => HOL_DATE_RE.test(d)),
+    workdayDates: holLines("holWorkInput").filter(d => HOL_DATE_RE.test(d)),
+  };
+}
+function holSummary() {
+  const h = readHolidays(), bad = [...holLines("holExtraInput"), ...holLines("holWorkInput")].filter(d => !HOL_DATE_RE.test(d));
+  const el = document.getElementById("holSummary");
+  document.getElementById("holBody").style.opacity = h.skipHolidays ? "1" : "0.55";
+  el.textContent = (h.skipHolidays
+    ? "On: holiday = no automatic run. Up to " + (h.retries + 1) + " attempt" + (h.retries ? "s" : "") + ", " + h.retryDelaySeconds + " s apart, " + h.timeoutSeconds + " s each; if none works the run " + (h.onFailure === "skip" ? "is skipped." : "goes ahead anyway.")
+    : "Off: the automatic run ignores holidays.") + (bad.length ? "  Ignored (not YYYY-MM-DD): " + bad.join(", ") : "");
+}
+function renderHolidays() {
+  const h = { ...DEFAULT_HOLIDAYS, ...(state.holidays || {}) };
+  document.getElementById("holSkipInput").checked = !!h.skipHolidays;
+  document.getElementById("holUrlInput").value = h.providerUrl;
+  document.getElementById("holRetriesInput").value = h.retries;
+  document.getElementById("holDelayInput").value = h.retryDelaySeconds;
+  document.getElementById("holTimeoutInput").value = h.timeoutSeconds;
+  document.getElementById("holOnFailureInput").value = h.onFailure === "skip" ? "skip" : "generate";
+  document.getElementById("holExtraInput").value = (h.extraHolidayDates || []).join("\n");
+  document.getElementById("holWorkInput").value = (h.workdayDates || []).join("\n");
+  holSummary();
+}
+async function holTest() {
+  const password = document.getElementById("passwordInput").value;
+  const out = document.getElementById("holTestOut");
+  if (WORKER_URL.includes("REPLACE-ME")) { out.textContent = "Set WORKER_URL in admin.html first."; return; }
+  if (!password) { out.textContent = "Enter the admin password in the Save panel first."; return; }
+  out.textContent = "Asking the service…";
+  try {
+    const date = document.getElementById("holTestDate").value.trim();
+    const resp = await fetch(WORKER_URL + "/holiday/check", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + password },
+      body: JSON.stringify({ holidays: readHolidays(), date: HOL_DATE_RE.test(date) ? date : undefined }),
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error || resp.status);
+    out.textContent = d.date + ": " + d.status + " (" + d.detail + ", " + d.attempts + " attempt" + (d.attempts === 1 ? "" : "s") + ") -> automatic run would " + (d.decision.run ? "RUN" : "SKIP") + ".";
+  } catch (err) { out.textContent = "Failed: " + err.message; }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  ["holSkipInput","holUrlInput","holRetriesInput","holDelayInput","holTimeoutInput","holOnFailureInput","holExtraInput","holWorkInput"]
+    .forEach(id => { const el = document.getElementById(id); el.addEventListener("input", holSummary); el.addEventListener("change", holSummary); });
+  document.getElementById("holTestBtn").onclick = holTest;
+});
+
+async function tmExport() {
+  const password = document.getElementById("passwordInput").value;
+  const out = document.getElementById("tmCompareOut");
+  if (WORKER_URL.includes("REPLACE-ME")) { out.textContent = "Set WORKER_URL in admin.html first."; return; }
+  if (!password) { out.textContent = "Enter the admin password in the Save panel first."; return; }
+  try {
+    const resp = await fetch(WORKER_URL + "/history", { headers: { Authorization: "Bearer " + password } });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.status);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "task-history-" + (data.exportedAt || "").slice(0, 10) + ".json";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    out.textContent = "Downloaded " + Object.keys(data.days || {}).length + " remembered day(s).";
+  } catch (err) { out.textContent = "Failed: " + err.message; }
+}
+
+
+function tm() { return state.taskMemory; }
+
+function mergeTaskMemory(raw) {
+  const m = { ...DEFAULT_TASK_MEMORY, ...(raw || {}) };
+  if (typeof m.indicatorEmoji !== "string" || !m.indicatorEmoji.trim()) m.indicatorEmoji = DEFAULT_TASK_MEMORY.indicatorEmoji;
+  if (!TM_METHODS.some((x) => x.id === m.method)) m.method = DEFAULT_TASK_MEMORY.method;
+  m.methodByWeekday = { ...(m.methodByWeekday || {}) };
+  m.capacities = { ...(m.capacities || {}) };
+  return m;
+}
+
+// One radio group: options = [{value,label,desc}], key = taskMemory field.
+function buildRadioGroup(containerId, name, options, key) {
+  const box = document.getElementById(containerId);
+  box.innerHTML = "";
+  options.forEach((opt) => {
+    const label = document.createElement("label");
+    label.className = "tm-opt";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = name;
+    radio.value = opt.value;
+    radio.checked = tm()[key] === opt.value;
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      tm()[key] = opt.value;
+      updateMemoryWarnings();
+      updateMemorySummaries();
+    });
+    const text = document.createElement("span");
+    const main = document.createElement("span");
+    main.textContent = opt.label;
+    const desc = document.createElement("span");
+    desc.className = "tm-opt-desc";
+    desc.textContent = opt.desc;
+    text.appendChild(main);
+    text.appendChild(desc);
+    label.appendChild(radio);
+    label.appendChild(text);
+    box.appendChild(label);
+  });
+}
+
+function bindCheckbox(id, key) {
+  const el = document.getElementById(id);
+  el.checked = !!tm()[key];
+  el.onchange = () => {
+    tm()[key] = el.checked;
+    if (key === "enabled") document.getElementById("tmBody").classList.toggle("off", !el.checked);
+    updateMemoryWarnings();
+    updateMemorySummaries();
+    updateMemoryPreview();
+  };
+}
+
+function setMemoryDays(value, fromInput) {
+  const n = Number(value);
+  const range = document.getElementById("tmDaysRange");
+  const num = document.getElementById("tmDaysInput");
+  // The slider is always valid; the number box may be mid-typing, so only
+  // push a valid whole number into the state (save re-validates anyway).
+  if (Number.isInteger(n) && n >= 1 && n <= 365) {
+    tm().memoryDays = n;
+    range.value = n;
+    if (!fromInput) num.value = n;
+  }
+  updateMemoryWarnings();
+  updateMemorySummaries();
+  updateMemoryPreview();
+}
+
+function renderEmojiPresets() {
+  const row = document.getElementById("tmEmojiPresets");
+  row.innerHTML = "";
+  const current = tm().indicatorEmoji;
+  const isPreset = TM_EMOJI_PRESETS.includes(current);
+  TM_EMOJI_PRESETS.forEach((emoji) => {
+    const label = document.createElement("label");
+    label.className = "tm-emoji";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "tmEmoji";
+    radio.checked = current === emoji;
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      tm().indicatorEmoji = emoji;
+      document.getElementById("tmEmojiCustom").value = "";
+      updateMemoryPreview();
+      updateMemorySummaries();
+    });
+    label.appendChild(radio);
+    label.appendChild(document.createTextNode(emoji));
+    row.appendChild(label);
+  });
+  const custom = document.createElement("label");
+  custom.className = "tm-emoji";
+  const cr = document.createElement("input");
+  cr.type = "radio";
+  cr.name = "tmEmoji";
+  cr.checked = !isPreset;
+  cr.addEventListener("change", () => {
+    if (!cr.checked) return;
+    const typed = document.getElementById("tmEmojiCustom").value.trim();
+    if (typed) tm().indicatorEmoji = typed;
+    document.getElementById("tmEmojiCustom").focus();
+    updateMemoryPreview();
+  });
+  custom.appendChild(cr);
+  custom.appendChild(document.createTextNode("Custom"));
+  row.appendChild(custom);
+  const input = document.getElementById("tmEmojiCustom");
+  input.value = isPreset ? "" : current;
+  input.oninput = () => {
+    const typed = input.value.trim();
+    if (typed) {
+      tm().indicatorEmoji = typed;
+      cr.checked = true;
+    }
+    updateMemoryPreview();
+    updateMemorySummaries();
+  };
+}
+
+function memoryDaysLabel() {
+  const n = tm().memoryDays;
+  return n + " day" + (n === 1 ? "" : "s");
+}
+
+function updateMemoryPreview() {
+  const days = Math.min(tm().memoryDays, 3);
+  const lines = [
+    "Preview: " + (tm().indicatorEmoji || DEFAULT_TASK_MEMORY.indicatorEmoji) +
+      " Considered the last " + days + " day" + (days === 1 ? "" : "s") + " of history",
+  ];
+  if (tm().reportShowMethod) lines.push("Method: " + tmMethodLine());
+  if (tm().reportShowStartLoads && tm().method !== "none") lines.push("Ava  (3.2)   ·   not assigned: Ben (0)  Cara (1.5)");
+  document.getElementById("tmPreview").textContent = lines.join("\n");
+}
+
+// The current choice shown on each collapsed section's header, so a
+// closed panel still tells you what it's set to.
+function updateMemorySummaries() {
+  const find = (list, v) => (list.find(o => o.value === v) || {}).label || v;
+  const where = [];
+  if (tm().useInAutomatedRun) where.push("automatic");
+  if (tm().allowManualCheckbox) where.push("website");
+  document.getElementById("tmSum1").textContent = where.length ? where.join(" + ") : "nowhere";
+  document.getElementById("tmSum2").textContent =
+    memoryDaysLabel() + " · " + (tm().daysMode === "automatedDays" ? "automatic days" : "generated days");
+  document.getElementById("tmSum3").textContent = tm().method === "tally"
+    ? tmNormText() + " · " + (tm().combine === "mean" ? "average" : "sum") + " · absent: " + tm().absentDays
+    : tmNormText();
+  const overrides = Object.keys(tm().methodByWeekday || {}).length;
+  document.getElementById("tmSumMethod").textContent = tmMethod(tm().method).name + " · " + ((tm().methodDays || {})[tm().method] || tm().memoryDays) + " d" + (overrides ? " + " + overrides + " weekday override" + (overrides === 1 ? "" : "s") : "");
+  document.getElementById("tmSum4").textContent =
+    ({ zero: "zero", mean: "mean", randomExisting: "random pick", randomRange: "random range" })[tm().newPersonLoad];
+  const shown = [tm().indicatorOnCard && "card", tm().indicatorInCaption && "caption", tm().indicatorOnWebsite && "website"].filter(Boolean);
+  document.getElementById("tmSum5").textContent = shown.length ? tm().indicatorEmoji + " " + shown.join(" + ") : "hidden";
+}
+
+// Combinations that are legal but probably not what was meant -- shown
+// live, never blocking a save.
+function updateMemoryWarnings() {
+  const box = document.getElementById("tmWarnings");
+  box.innerHTML = "";
+  const m = tm();
+  const add = (text, info) => {
+    const d = document.createElement("div");
+    d.className = "tm-warn" + (info ? " info" : "");
+    d.textContent = text;
+    box.appendChild(d);
+  };
+  const runDays = Array.isArray(state.automatedRunDays) ? state.automatedRunDays : [];
+
+  if (m.enabled && !m.useInAutomatedRun && !m.allowManualCheckbox) {
+    add("Task memory is on, but it's switched off for both the automatic run and the website, so it will never be used. History is still recorded.");
+  }
+  if (m.enabled && m.daysMode === "automatedDays" && runDays.length === 0) {
+    add("\"Automatic run days\" is selected, but no Automatic Run Days are ticked above, so the memory window is always empty.");
+  }
+  if (m.enabled && m.source === "automatedOnly" && runDays.length === 0) {
+    add("Only automatic assignments count, but no Automatic Run Days are ticked above, so nothing will ever be remembered.");
+  }
+  if (m.enabled && m.daysMode === "automatedDays" && runDays.length > 0) {
+    const calendarNeeded = Math.ceil(m.memoryDays / runDays.length) * 7;
+    if (calendarNeeded > m.keepDays) {
+      add("With " + runDays.length + " automatic day" + (runDays.length === 1 ? "" : "s") + " a week, " + m.memoryDays +
+          " automatic days reach back about " + calendarNeeded + " days, but history keeps only the last " + m.keepDays + " calendar days. The window will be shorter than the setting.", true);
+    }
+  }
+  const longest = Math.max(m.memoryDays, ...Object.values(m.methodDays || {}));
+  if (m.enabled && longest > m.keepDays) {
+    add("A method looks back " + longest + " days but only " + m.keepDays + " days of history are stored, so its window will be shorter than the setting.", true);
+  }
+  if (m.enabled && m.method === "season" && (((m.methodDays || {}).season || m.memoryDays) < m.seasonDays)) {
+    add("The Season's window (" + (((m.methodDays || {}).season || m.memoryDays)) + " days) is shorter than its season (" + m.seasonDays + " days), so the end of each season is partly forgotten. Give The Season its own number of days of at least the season length.", true);
+  }
+  if (m.enabled && m.newPersonLoad === "randomRange") {
+    add("\"Random load in the possible range\" can start someone new with a very high load, so they may get few or no tasks for a while.", true);
+  }
+  if (m.enabled && !m.indicatorOnCard && !m.indicatorInCaption && !m.indicatorOnWebsite) {
+    add("All indicators are off: history will still shape assignments, but nothing will say so.", true);
+  }
+}
+
+// Everything the server would reject, checked up front.
+function validateTaskMemoryState() {
+  const m = tm();
+  if (!Number.isInteger(m.memoryDays) || m.memoryDays < 1 || m.memoryDays > 365) {
+    return "memory length must be a whole number from 1 to 365.";
+  }
+  const typedDays = Number(document.getElementById("tmDaysInput").value);
+  if (!Number.isInteger(typedDays) || typedDays < 1 || typedDays > 365) {
+    return "memory length must be a whole number from 1 to 365.";
+  }
+  if (!Number.isInteger(m.keepDays) || m.keepDays < 14 || m.keepDays > 365) {
+    return "days of history stored must be a whole number from 14 to 365.";
+  }
+  const emoji = (m.indicatorEmoji || "").trim();
+  if (emoji.length > 24) return "the indicator icon must be a single emoji (at most 24 characters).";
+  return null;
+}
+
+function renderTaskMemory() {
+  state.taskMemory = mergeTaskMemory(state.taskMemory);
+  bindCheckbox("tmEnabledInput", "enabled");
+  document.getElementById("tmBody").classList.toggle("off", !tm().enabled);
+  bindCheckbox("tmAutoRunInput", "useInAutomatedRun");
+  bindCheckbox("tmManualBoxInput", "allowManualCheckbox");
+  bindCheckbox("tmFixedInput", "countFixedRotation");
+  bindCheckbox("tmIndCardInput", "indicatorOnCard");
+  bindCheckbox("tmIndCaptionInput", "indicatorInCaption");
+  bindCheckbox("tmIndWebsiteInput", "indicatorOnWebsite");
+  bindCheckbox("tmRepMethodInput", "reportShowMethod");
+  bindCheckbox("tmRepLoadsInput", "reportShowStartLoads");
+  bindCheckbox("tmRepWeightsInput", "reportShowWeights");
+  buildMethodGrid();
+  renderMethodDetail();
+  renderWeekdayMethods();
+  document.getElementById("tmCompareBtn").onclick = tmCompare;
+  document.getElementById("tmExportBtn").onclick = tmExport;
+
+  const keep = document.getElementById("tmKeepInput");
+  keep.value = tm().keepDays;
+  keep.oninput = () => {
+    const n = Number(keep.value);
+    if (Number.isInteger(n) && n >= 14 && n <= 365) { tm().keepDays = n; updateMemoryWarnings(); }
+  };
+  const range = document.getElementById("tmDaysRange");
+  const num = document.getElementById("tmDaysInput");
+  range.value = tm().memoryDays;
+  num.value = tm().memoryDays;
+  range.oninput = () => setMemoryDays(range.value, false);
+  num.oninput = () => setMemoryDays(num.value, true);
+
+  buildRadioGroup("tmDaysModeOptions", "tmDaysMode", TM_DAYS_MODE, "daysMode");
+  buildRadioGroup("tmSourceOptions", "tmSource", TM_SOURCE, "source");
+  buildRadioGroup("tmNormalizeOptions", "tmNormalize", TM_NORMALIZE, "normalizeTo");
+  buildRadioGroup("tmAbsentOptions", "tmAbsent", TM_ABSENT, "absentDays");
+  buildRadioGroup("tmCombineOptions", "tmCombine", TM_COMBINE, "combine");
+  buildRadioGroup("tmNewPersonOptions", "tmNewPerson", TM_NEW_PERSON, "newPersonLoad");
+  renderEmojiPresets();
+  updateMemoryPreview();
+  updateMemorySummaries();
+  updateMemoryWarnings();
+}
+
 // ---------------------------------------------------------------- Load / Save
 function renderAll() {
   renderPeople();
@@ -718,6 +1867,9 @@ function renderAll() {
   document.getElementById("captionSilentInput").checked = !!state.appearance.captionSilent;
   document.getElementById("warnOnAutomatedRotationFallbackInput").checked =
     state.appearance.warnOnAutomatedRotationFallback !== false;
+  document.getElementById("mainPageStartInput").checked = !!state.appearance.mainPageStartFromAutomatic;
+  renderTaskMemory();
+  renderHolidays();
 }
 
 async function loadConfig() {
@@ -744,6 +1896,8 @@ async function loadConfig() {
       // here too in case an older cached response lacks the new fields.
       appearance: { ...DEFAULT_APPEARANCE, ...(cfg.appearance || {}) },
       automatedRunDays: Array.isArray(cfg.automatedRunDays) ? cfg.automatedRunDays : WEEKDAYS.slice(0, 5),
+      taskMemory: mergeTaskMemory(cfg.taskMemory),
+      holidays: { ...DEFAULT_HOLIDAYS, ...(cfg.holidays || {}) },
     };
     renderAll();
     setStatus("Loaded current config.", "ok");
@@ -762,6 +1916,15 @@ async function saveConfigToServer() {
     setStatus("Enter the admin password first.", "err");
     return;
   }
+  // Task memory is validated from the live state (every control writes
+  // straight into it). Catch bad values here with a clear message instead
+  // of a bounced save.
+  const tmError = validateTaskMemoryState();
+  if (tmError) {
+    setStatus("Task Memory: " + tmError, "err");
+    return;
+  }
+
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.disabled = true;
   setStatus("Saving…", "info");
@@ -776,8 +1939,11 @@ async function saveConfigToServer() {
       photoSilent: document.getElementById("photoSilentInput").checked,
       captionSilent: document.getElementById("captionSilentInput").checked,
       warnOnAutomatedRotationFallback: document.getElementById("warnOnAutomatedRotationFallbackInput").checked,
+      mainPageStartFromAutomatic: document.getElementById("mainPageStartInput").checked,
     },
     automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
+    holidays: readHolidays(),
+    taskMemory: { ...state.taskMemory, indicatorEmoji: state.taskMemory.indicatorEmoji.trim() || DEFAULT_TASK_MEMORY.indicatorEmoji },
   };
 
   try {

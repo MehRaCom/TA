@@ -499,6 +499,11 @@
     font-size: 0.95rem;
     margin: 10px 0 4px;
   }
+  .method-box { margin: 10px 0 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+  .method-box b { color: var(--text, inherit); }
+  .method-box .chip { display: inline-block; font: 500 0.72rem var(--font-mono, monospace); border: 1px solid #6fc3b2; background: rgba(111,195,178,.15); border-radius: 999px; padding: 1px 9px; margin: 0 4px; color: inherit; }
+  .method-box a { color: #4aa595; }
+  .today-start-chip { margin-left: 8px; font: 500 0.7rem var(--font-mono, monospace); color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
   .today-card-person:first-of-type { margin-top: 0; }
   .today-card-task {
     display: flex;
@@ -561,8 +566,19 @@
   <footer class="actions">
     <button class="primary" id="assignBtn" type="button">Assign</button>
     <button class="secondary" id="notifyAnywayBtn" type="button">Notify group anyway</button>
+    <!-- Only shown when the admin has switched on Task Memory. Ticked =
+         this manual Assign also starts everyone's load from what they did
+         on the previous days (the automatic run always does when it's on). -->
+    <label class="check" id="historyCheckWrap" style="display:none;">
+      <input type="checkbox" id="useHistoryCheck">
+      <span>Consider previous days' history</span>
+    </label>
     <span id="status"></span>
   </footer>
+  <!-- Which fairness method is used when "Consider previous days' history"
+       is on. Filled from the server config and, after Assign, from the
+       method the assignment really used. -->
+  <div class="method-box" id="methodBox" style="display:none;"></div>
 
   <section class="panel today-panel" id="todaySection" style="display:none;">
     <h2>Today's Assignments <span id="todayCount" class="hint"></span></h2>
@@ -635,6 +651,34 @@ function configIsValid(cfg) {
   return true;
 }
 
+function tehranWeekdayNow() {
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "Asia/Tehran" }).format(new Date());
+}
+
+// What today's AUTOMATIC run would start from: people default-ticked AND
+// present today, tasks default-ticked AND active today, fixed rotation as
+// the admin set it (only for tasks that actually have a schedule). Same
+// gates the Worker applies for the scheduled run.
+function buildAutomaticTodayConfig(darkMode) {
+  const wd = tehranWeekdayNow();
+  return {
+    darkMode,
+    people: PEOPLE.map(p => ({
+      name: p.name,
+      enabled: !!p.defaultEnabled && (!p.presenceDays || p.presenceDays.includes(wd)),
+    })),
+    tasks: TASKS.map(t => {
+      const eligible = !!t.defaultEnabled && (!t.activeDays || t.activeDays.includes(wd));
+      return {
+        name: t.name,
+        enabled: eligible,
+        weight: t.weight,
+        useFixedRotation: eligible && !!FIXED_SCHEDULES[t.name] && !!t.useInAutomatedRotation,
+      };
+    }),
+  };
+}
+
 function loadOrInitConfig() {
   let cfg = null;
   try {
@@ -647,6 +691,10 @@ function loadOrInitConfig() {
     cfg = buildDefaultConfig();
     saveConfig(cfg);
   }
+  // Optional (admin "Appearance"): ignore the remembered People/Task ticks
+  // and start from today's automatic setup. Only the theme is carried over
+  // from the local copy; nothing is written back until the visitor acts.
+  if (START_FROM_AUTOMATIC) return buildAutomaticTodayConfig(cfg.darkMode);
   return cfg;
 }
 
@@ -1026,15 +1074,104 @@ async function fetchServerConfig() {
 }
 
 function applyServerConfig(serverCfg) {
-  PEOPLE = (serverCfg.people || []).map(p => ({ name: p.name, defaultEnabled: p.defaultEnabled }));
+  PEOPLE = (serverCfg.people || []).map(p => ({ name: p.name, defaultEnabled: p.defaultEnabled, presenceDays: p.presenceDays }));
   TASKS = (serverCfg.tasks || []).map(t => ({
     name: t.name, weight: t.weight, defaultEnabled: t.defaultEnabled, icon: t.icon,
     useInAutomatedRotation: !!t.useInAutomatedRotation,
+    activeDays: t.activeDays,
   }));
+  START_FROM_AUTOMATIC = !!(serverCfg.appearance && serverCfg.appearance.mainPageStartFromAutomatic);
   TASK_COLORS = {};
   (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
   FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
+  TASK_MEMORY = (serverCfg.taskMemory && typeof serverCfg.taskMemory === "object") ? serverCfg.taskMemory : {};
+  TASK_MEMORY_ENABLED = TASK_MEMORY.enabled === true;
+  TASK_MEMORY.activeNow = (TASK_MEMORY_ENABLED && serverCfg.taskMemoryActive) || null;
+  if (typeof renderTodaySlider === "function") renderTodaySlider();
   return PEOPLE.length > 0 && TASKS.length > 0;
+}
+
+// Task memory (admin: "Task Memory"). When it's switched on, a checkbox
+// next to Assign lets this manual run start from the previous days'
+// history. The choice is remembered per browser, separately from the main
+// saved config so it can never invalidate it. Defaults to ticked.
+const USE_HISTORY_STORAGE_KEY = "taskAssignerUseHistory";
+let TASK_MEMORY_ENABLED = false;
+let TASK_MEMORY = {};
+let START_FROM_AUTOMATIC = false;
+// Manual checkbox only exists when memory is on AND the admin allows it.
+function manualHistoryBoxVisible() {
+  return TASK_MEMORY_ENABLED && TASK_MEMORY.allowManualCheckbox !== false;
+}
+function websiteIndicatorOn() {
+  return TASK_MEMORY_ENABLED && TASK_MEMORY.indicatorOnWebsite !== false;
+}
+// "Method: The Tally · last 7 days · ... " plus start loads, from what the
+// server recorded for that assignment (null when memory wasn't used).
+function fairnessText(fx, daysUsed) {
+  if (!fx || !websiteIndicatorOn() || TASK_MEMORY.reportShowMethod === false) return null;
+  let t = "Method: " + fx.line;
+  if (!(daysUsed > 0) && fx.methodId !== "none") t += " · no earlier days yet";
+  return t;
+}
+function startLoadOf(fx, daysUsed, name) {
+  if (!fx || !websiteIndicatorOn() || TASK_MEMORY.reportShowStartLoads === false) return null;
+  if (!(daysUsed > 0) || fx.methodId === "none") return null;
+  const v = (fx.startLoads || {})[name];
+  return typeof v === "number" ? Math.round(v * 10) / 10 : null;
+}
+function startLoadsText(fx, daysUsed) {
+  if (!fx || !websiteIndicatorOn() || TASK_MEMORY.reportShowStartLoads === false) return null;
+  if (!(daysUsed > 0) || fx.methodId === "none") return null;
+  const parts = Object.entries(fx.startLoads || {}).map(([n, v]) => n + " " + v);
+  return parts.length ? "Start loads: " + parts.join(" · ") : null;
+}
+// The "Method in use" box under the Assign button. `fx` is the method a real
+// assignment used (after Assign); otherwise the configured one for today.
+function renderMethodBox(fx, daysUsed) {
+  const box = document.getElementById("methodBox");
+  if (!box) return;
+  const act = TASK_MEMORY.activeNow;
+  if (!TASK_MEMORY_ENABLED || (!fx && !act)) { box.style.display = "none"; return; }
+  const useIt = !document.getElementById("useHistoryCheck") || !manualHistoryBoxVisible() || document.getElementById("useHistoryCheck").checked;
+  const esc = (t) => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let h;
+  if (fx) {
+    h = "<b>Method used:</b> " + esc(fx.methodName || fx.methodId) + '<span class="chip">' + esc(fx.brief || "") + "</span>";
+    if (!(daysUsed > 0) && fx.methodId !== "none") h += "<br>No earlier days were available, so everyone started from zero.";
+    else if (daysUsed > 0) h += "<br>Based on the last " + daysUsed + " remembered day" + (daysUsed === 1 ? "" : "s") + ".";
+  } else if (useIt) {
+    h = "<b>Fairness method:</b> " + esc(act.name) + '<span class="chip">' + esc(act.brief) + "</span><br>People who carried more on earlier days start heavier and get lighter tasks.";
+  } else {
+    h = "<b>History is off for this assignment.</b> Everyone starts from zero. Tick \u201cConsider previous days\u2019 history\u201d to use <b>" + esc(act.name) + "</b>.";
+  }
+  h += ' <a href="methods.html" target="_blank">How the methods work</a>';
+  box.innerHTML = h;
+  box.style.display = "";
+}
+function memoryEmoji() {
+  const e = typeof TASK_MEMORY.indicatorEmoji === "string" ? TASK_MEMORY.indicatorEmoji.trim() : "";
+  return e || "\u23F3";
+}
+
+function readUseHistoryPref() {
+  try {
+    return localStorage.getItem(USE_HISTORY_STORAGE_KEY) !== "0";
+  } catch (e) {
+    return true;
+  }
+}
+
+function setupHistoryCheckbox() {
+  const wrap = document.getElementById("historyCheckWrap");
+  const cb = document.getElementById("useHistoryCheck");
+  wrap.style.display = manualHistoryBoxVisible() ? "" : "none";
+  cb.checked = readUseHistoryPref();
+  cb.onchange = () => {
+    try { localStorage.setItem(USE_HISTORY_STORAGE_KEY, cb.checked ? "1" : "0"); } catch (e) { /* non-fatal */ }
+    renderMethodBox(null, 0);
+  };
+  renderMethodBox(null, 0);
 }
 
 function buildUIFromCurrentConfig() {
@@ -1053,6 +1190,7 @@ function buildUIFromCurrentConfig() {
   buildPeopleList();
   buildTaskList();
   applyFixedRotationUI();
+  setupHistoryCheckbox();
   applyTheme();
 }
 
@@ -1141,6 +1279,21 @@ function buildTodayCard(record) {
     card.appendChild(warn);
   }
 
+  if (record.historyDaysUsed > 0 && websiteIndicatorOn()) {
+    const note = document.createElement("div");
+    note.className = "today-card-time";
+    note.title = "Considered the last " + record.historyDaysUsed + " remembered day(s)";
+    note.textContent = memoryEmoji() + " history: " + record.historyDaysUsed + " day" + (record.historyDaysUsed === 1 ? "" : "s");
+    card.appendChild(note);
+  }
+  [fairnessText(record.fairness, record.historyDaysUsed)].forEach((t) => {
+    if (!t) return;
+    const n = document.createElement("div");
+    n.className = "today-card-time";
+    n.textContent = t;
+    card.appendChild(n);
+  });
+
   const byPerson = new Map();
   (record.assignment || []).forEach((a) => {
     if (!byPerson.has(a.person)) byPerson.set(a.person, []);
@@ -1151,6 +1304,13 @@ function buildTodayCard(record) {
     const personEl = document.createElement("div");
     personEl.className = "today-card-person";
     personEl.textContent = person;
+    const sl = startLoadOf(record.fairness, record.historyDaysUsed, person);
+    if (sl !== null) {
+      const chip = document.createElement("span");
+      chip.className = "today-start-chip";
+      chip.textContent = String(sl);
+      personEl.appendChild(chip);
+    }
     card.appendChild(personEl);
 
     tasks.forEach((t) => {
@@ -1169,16 +1329,29 @@ function buildTodayCard(record) {
   return card;
 }
 
+let lastTodayResults = null;
 async function loadTodaySlider() {
-  const section = document.getElementById("todaySection");
-  const slider = document.getElementById("todaySlider");
-  const count = document.getElementById("todayCount");
   try {
     const resp = await fetch(WORKER_URL + "/today");
     if (!resp.ok) return; // non-fatal -- the main app still works without this
     const data = await resp.json();
-    const results = data.results || [];
+    lastTodayResults = data.results || [];
+    renderTodaySlider();
+  } catch (err) {
+    // Non-fatal -- the slider is a nice-to-have, never blocks the main app.
+  }
+}
 
+// Separate from the fetch because the history indicator depends on the
+// server config, which may arrive after /today does -- applyServerConfig
+// calls this again so the indicator never depends on that race.
+function renderTodaySlider() {
+  const section = document.getElementById("todaySection");
+  const slider = document.getElementById("todaySlider");
+  const count = document.getElementById("todayCount");
+  if (!lastTodayResults) return;
+  try {
+    const results = lastTodayResults;
     slider.innerHTML = "";
     if (results.length === 0) {
       section.style.display = "none";
@@ -1188,7 +1361,7 @@ async function loadTodaySlider() {
     results.forEach((record) => slider.appendChild(buildTodayCard(record)));
     section.style.display = "";
   } catch (err) {
-    // Non-fatal -- the slider is a nice-to-have, never blocks the main app.
+    // Non-fatal.
   }
 }
 
@@ -1341,6 +1514,9 @@ async function callAssignEndpoint(forceNotify) {
     people: PEOPLE.map((p, i) => ({ name: p.name, enabled: personChecks[i].checked })),
     tasks: enabledTasksPayload,
     forceNotify: !!forceNotify,
+    // Only meaningful (and only ever true) when the admin has task memory
+    // on and the box is ticked; the Worker ignores it otherwise.
+    useHistory: manualHistoryBoxVisible() && document.getElementById("useHistoryCheck").checked,
   };
 
   const resp = await fetch(WORKER_URL + "/assign", {
@@ -1370,11 +1546,16 @@ async function onAssignClicked() {
 
     lastServerResult = data;
     renderAssignment(data.assignment);
+    renderMethodBox(data.fairness && websiteIndicatorOn() ? data.fairness : null, data.historyDaysUsed || 0);
     applyManualRotationFallbackResult(data.rotationFallbackTasks, fixedSnapshot);
     loadTodaySlider();
 
     if (data.status === "new") {
-      setStatus("New assignment generated and sent to the group.", "ok");
+      const mem = data.historyDaysUsed > 0 && websiteIndicatorOn()
+        ? ` ${memoryEmoji()} (considered the last ${data.historyDaysUsed} remembered day${data.historyDaysUsed === 1 ? "" : "s"})`
+        : "";
+      const fl = [fairnessText(data.fairness, data.historyDaysUsed)].filter(Boolean);
+      setStatus("New assignment generated and sent to the group." + mem + (fl.length ? "  " + fl.join("  ·  ") : ""), "ok");
     } else if (data.status === "repeat") {
       const when = formatTehranTime(data.generatedAt);
       setStatus(
