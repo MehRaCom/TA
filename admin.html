@@ -424,6 +424,10 @@
             <input type="checkbox" id="tmManualBoxInput">
             Show "Consider previous days' history" next to the website's Assign button
           </label>
+          <label class="check" style="margin-top:6px;">
+            <input type="checkbox" id="tmManualMethodInput">
+            Let website visitors choose a different method for their own manual assignment (the default stays as set below)
+          </label>
           <p class="subtitle" style="margin-top:6px;">
             With the box hidden, manual runs never use history. With it shown, each person
             decides per run (remembered per browser, ticked by default).
@@ -552,10 +556,6 @@
             <input type="checkbox" id="tmRepLoadsInput">
             Each person's starting load: a pill beside their name, and a number on the "not assigned" chips
           </label>
-          <label class="check" style="margin-top:6px;">
-            <input type="checkbox" id="tmRepWeightsInput">
-            Each task's weight in the Telegram caption (the image card always shows it)
-          </label>
 
           <div class="tm-group-title">Icon</div>
           <div class="tm-emoji-row" id="tmEmojiPresets"></div>
@@ -681,6 +681,7 @@ const DEFAULT_TASK_MEMORY = {
   reportShowWeights: true,
   useInAutomatedRun: true,
   allowManualCheckbox: true,
+  allowManualMethod: true,
   indicatorOnCard: true,
   indicatorInCaption: true,
   indicatorOnWebsite: true,
@@ -1817,13 +1818,13 @@ function renderTaskMemory() {
   document.getElementById("tmBody").classList.toggle("off", !tm().enabled);
   bindCheckbox("tmAutoRunInput", "useInAutomatedRun");
   bindCheckbox("tmManualBoxInput", "allowManualCheckbox");
+  bindCheckbox("tmManualMethodInput", "allowManualMethod");
   bindCheckbox("tmFixedInput", "countFixedRotation");
   bindCheckbox("tmIndCardInput", "indicatorOnCard");
   bindCheckbox("tmIndCaptionInput", "indicatorInCaption");
   bindCheckbox("tmIndWebsiteInput", "indicatorOnWebsite");
   bindCheckbox("tmRepMethodInput", "reportShowMethod");
   bindCheckbox("tmRepLoadsInput", "reportShowStartLoads");
-  bindCheckbox("tmRepWeightsInput", "reportShowWeights");
   buildMethodGrid();
   renderMethodDetail();
   renderWeekdayMethods();

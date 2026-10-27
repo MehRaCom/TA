@@ -502,6 +502,7 @@
   .method-box { margin: 10px 0 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
   .method-box b { color: var(--text, inherit); }
   .method-box .chip { display: inline-block; font: 500 0.72rem var(--font-mono, monospace); border: 1px solid #6fc3b2; background: rgba(111,195,178,.15); border-radius: 999px; padding: 1px 9px; margin: 0 4px; color: inherit; }
+  .method-box select { font: inherit; font-size: 0.82rem; margin-left: 4px; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: inherit; }
   .method-box a { color: #4aa595; }
   .today-start-chip { margin-left: 8px; font: 500 0.7rem var(--font-mono, monospace); color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
   .today-card-person:first-of-type { margin-top: 0; }
@@ -1096,6 +1097,15 @@ function applyServerConfig(serverCfg) {
 // history. The choice is remembered per browser, separately from the main
 // saved config so it can never invalidate it. Defaults to ticked.
 const USE_HISTORY_STORAGE_KEY = "taskAssignerUseHistory";
+const METHOD_PICK_STORAGE_KEY = "taskAssignerMethodPick";
+function readMethodPick() { try { return localStorage.getItem(METHOD_PICK_STORAGE_KEY) || ""; } catch (e) { return ""; } }
+function chosenMethodId() {
+  const act = TASK_MEMORY.activeNow;
+  if (!act || !manualMethodPickVisible()) return "";
+  const v = readMethodPick();
+  return act.options && act.options.some(o => o.id === v) && v !== act.id ? v : "";
+}
+function manualMethodPickVisible() { return manualHistoryBoxVisible() && TASK_MEMORY.allowManualMethod !== false; }
 let TASK_MEMORY_ENABLED = false;
 let TASK_MEMORY = {};
 let START_FROM_AUTOMATIC = false;
@@ -1141,12 +1151,24 @@ function renderMethodBox(fx, daysUsed) {
     if (!(daysUsed > 0) && fx.methodId !== "none") h += "<br>No earlier days were available, so everyone started from zero.";
     else if (daysUsed > 0) h += "<br>Based on the last " + daysUsed + " remembered day" + (daysUsed === 1 ? "" : "s") + ".";
   } else if (useIt) {
-    h = "<b>Fairness method:</b> " + esc(act.name) + '<span class="chip">' + esc(act.brief) + "</span><br>People who carried more on earlier days start heavier and get lighter tasks.";
+    const pick = chosenMethodId();
+    const o = pick && act.options ? act.options.find(x => x.id === pick) : null;
+    h = "<b>Fairness method:</b> " + esc(o ? o.name : act.name) + '<span class="chip">' + esc(o ? o.brief : act.brief) + "</span>" + (o ? " <i>(your choice, this browser)</i>" : "") + "<br>People who carried more on earlier days start heavier and get lighter tasks.";
   } else {
     h = "<b>History is off for this assignment.</b> Everyone starts from zero. Tick \u201cConsider previous days\u2019 history\u201d to use <b>" + esc(act.name) + "</b>.";
   }
   h += ' <a href="methods.html" target="_blank">How the methods work</a>';
+  if (!fx && act && act.options && manualMethodPickVisible()) {
+    const cur = chosenMethodId();
+    h += '<br><label>Use for my assignments: <select id="methodPick"><option value="">Default (' + esc(act.name) + ")</option>" +
+      act.options.filter(o => o.id !== act.id).map(o => '<option value="' + o.id + '"' + (o.id === cur ? " selected" : "") + ">" + esc(o.name) + "</option>").join("") + "</select></label>";
+  }
   box.innerHTML = h;
+  const sel = document.getElementById("methodPick");
+  if (sel) sel.onchange = () => {
+    try { localStorage.setItem(METHOD_PICK_STORAGE_KEY, sel.value); } catch (e) { /* non-fatal */ }
+    renderMethodBox(null, 0);
+  };
   box.style.display = "";
 }
 function memoryEmoji() {
@@ -1517,6 +1539,7 @@ async function callAssignEndpoint(forceNotify) {
     // Only meaningful (and only ever true) when the admin has task memory
     // on and the box is ticked; the Worker ignores it otherwise.
     useHistory: manualHistoryBoxVisible() && document.getElementById("useHistoryCheck").checked,
+    methodOverride: chosenMethodId() || undefined,
   };
 
   const resp = await fetch(WORKER_URL + "/assign", {
