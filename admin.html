@@ -45,6 +45,20 @@
   .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
   .field-row label { display: block; font-size: 0.85rem; }
   .field-row input, .field-row select { width: 100%; box-sizing: border-box; margin-top: 4px; }
+  .cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 8px; }
+  .cap-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; background: var(--panel-bg, transparent); }
+  .cap-card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .cap-card h4 { margin: 0; font-size: 0.9rem; display: flex; gap: 6px; align-items: center; }
+  .cap-card p { margin: 0; font-size: 0.76rem; color: var(--muted); }
+  .cap-card input { position: absolute; opacity: 0; pointer-events: none; }
+  .tg-bubble { background: #182533; color: #e7edf3; border-radius: 10px; padding: 8px 10px; font: 12.5px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+  :root[data-theme="light"] .tg-bubble { background: #eef3f8; color: #1c2733; }
+  .tg-bubble code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.95em; background: rgba(127,127,127,.18); border-radius: 4px; padding: 0 3px; }
+  .tg-bubble blockquote { margin: 2px 0; padding: 2px 0 2px 8px; border-left: 3px solid #6fc3b2; background: rgba(111,195,178,.08); }
+  .cap-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+  .cap-options label { font-size: 0.82rem; display: block; }
+  .cap-options select { width: 100%; margin-top: 3px; box-sizing: border-box; }
+  .cap-options label.chk { display: flex; gap: 8px; align-items: center; }
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -587,6 +601,17 @@
       shows this text as the push-notification preview when it's attached to the photo.
     </p>
     <div id="captionModeRow" class="caption-mode-row"></div>
+
+    <h3 style="margin:18px 0 4px;font-size:0.95rem;">Caption style <span class="hint">pick a look, then adjust anything; the selected card shows your exact result</span></h3>
+    <div id="capStyleGrid" class="cap-grid"></div>
+    <div class="cap-options" id="capStyleOptions"></div>
+    <div style="margin-top:8px;"><button class="add-btn" id="capResetBtn" type="button">Reset to the preset's own options</button>
+      <span class="hint" id="capCustomNote"></span></div>
+    <p class="subtitle" style="margin-top:6px;">
+      Fonts are Telegram's own (bold, italic, monospace, quote). Starting loads and the method line
+      only appear when Task Memory provides them. Telegram limits a caption on a photo to 1024
+      characters; longer text is trimmed from the end.
+    </p>
     <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="photoSilentInput">
       Send photo silently (no notification sound)
@@ -610,6 +635,13 @@
       active today, with fixed rotation as configured). Only the ticks are affected; theme and
       history checkbox keep their own memory.
     </p>
+    <h3 style="margin:16px 0 4px;font-size:0.95rem;">Main page memory <span class="hint">what each visitor's browser keeps and restores on every load</span></h3>
+    <p class="subtitle" style="margin-top:0;">
+      Ticked items are saved in the visitor's browser and come back on every visit or refresh.
+      Unticked items always start from the defaults set here. The people / tasks / rotation rows
+      have no effect while "starts from today's automatic setup" above is on.
+    </p>
+    <div id="mpmList"></div>
     <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
       Show the "no fixed rotation today" warning for the automated run
@@ -632,6 +664,158 @@ const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
 
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
+/* CAPTION-STYLE:BEGIN (copy of worker/caption-style.js, keep in sync) */
+const CS = (() => {
+// Caption styles: prepared looks for the Telegram caption, plus the options
+// each look is made of. Pure functions with no dependencies, so the Worker
+// builds the real caption with them and the admin page (which embeds a copy
+// of this file between its CAPTION-STYLE markers) draws the previews with the
+// very same code.
+//
+// Telegram captions use HTML parse mode, so the "fonts" are Telegram's own:
+// bold, italic, monospace (<code>), plain, and an optional quote block.
+
+const CAPTION_CHOICES = {
+  header:         ["full", "title", "none"],
+  divider:        ["none", "line"],
+  spacing:        ["tight", "people", "airy"],
+  personIcon:     ["person", "dot", "arrow", "none"],
+  personFont:     ["bold", "plain", "code", "italic"],
+  taskFont:       ["code", "plain", "italic"],
+  notAssigned:    ["auto", "none", "names", "namesLoads"],
+  method:         ["none", "short", "full"],
+};
+const CAPTION_FLAGS = ["taskIcons", "rotationMarker", "weights", "loads", "quote"];
+
+const CAPTION_PRESETS = [
+  { id: "classic", name: "Classic", blurb: "Title and time, people in bold, tasks in monospace, one short method line.",
+    options: { header: "full", divider: "none", spacing: "tight", personIcon: "person", personFont: "bold", taskFont: "code",
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+  { id: "minimal", name: "Minimal", blurb: "Just the title, who does what. Nothing else.",
+    options: { header: "title", divider: "none", spacing: "tight", personIcon: "none", personFont: "bold", taskFont: "plain",
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "none", method: "none", quote: false } },
+  { id: "airy", name: "Airy", blurb: "A divider and blank lines between people. Easy to read at a glance.",
+    options: { header: "full", divider: "line", spacing: "airy", personIcon: "person", personFont: "bold", taskFont: "code",
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+  { id: "quoted", name: "Quoted", blurb: "The assignment sits in a Telegram quote block, tasks in italics.",
+    options: { header: "title", divider: "none", spacing: "people", personIcon: "arrow", personFont: "bold", taskFont: "italic",
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: true } },
+  { id: "detailed", name: "Detailed", blurb: "Weights, starting loads, who was left out, and the full method line.",
+    options: { header: "full", divider: "none", spacing: "people", personIcon: "person", personFont: "bold", taskFont: "code",
+      taskIcons: true, rotationMarker: true, weights: true, loads: true, notAssigned: "namesLoads", method: "full", quote: false } },
+  { id: "ledger", name: "Ledger", blurb: "Everything in monospace, like a printed list.",
+    options: { header: "title", divider: "line", spacing: "tight", personIcon: "dot", personFont: "code", taskFont: "code",
+      taskIcons: false, rotationMarker: true, weights: true, loads: false, notAssigned: "auto", method: "short", quote: false } },
+  { id: "plain", name: "Plain text", blurb: "No bold, italics or monospace. Safe for any client.",
+    options: { header: "title", divider: "none", spacing: "people", personIcon: "dot", personFont: "plain", taskFont: "plain",
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+];
+
+const DEFAULT_PRESET = "classic";
+function captionPreset(id) { return CAPTION_PRESETS.find(p => p.id === id) || CAPTION_PRESETS[0]; }
+
+// {preset, options}: every option present, taken from the preset unless the
+// saved value is valid. Anything invalid falls back silently.
+function normalizeCaptionStyle(raw) {
+  const x = raw && typeof raw === "object" ? raw : {};
+  const preset = captionPreset(typeof x.preset === "string" ? x.preset : DEFAULT_PRESET);
+  const saved = x.options && typeof x.options === "object" ? x.options : {};
+  const options = { ...preset.options };
+  for (const k of Object.keys(CAPTION_CHOICES)) if (CAPTION_CHOICES[k].includes(saved[k])) options[k] = saved[k];
+  for (const k of CAPTION_FLAGS) if (typeof saved[k] === "boolean") options[k] = saved[k];
+  return { preset: preset.id, options };
+}
+
+function validateCaptionStyle(raw) {
+  if (raw == null) return { valid: true };
+  if (typeof raw !== "object" || Array.isArray(raw)) return { valid: false, error: "appearance.captionStyle must be an object" };
+  if (raw.preset != null && !CAPTION_PRESETS.some(p => p.id === raw.preset)) {
+    return { valid: false, error: "appearance.captionStyle.preset must be one of: " + CAPTION_PRESETS.map(p => p.id).join(", ") };
+  }
+  if (raw.options != null) {
+    if (typeof raw.options !== "object" || Array.isArray(raw.options)) return { valid: false, error: "appearance.captionStyle.options must be an object" };
+    for (const [k, v] of Object.entries(raw.options)) {
+      if (CAPTION_CHOICES[k]) {
+        if (!CAPTION_CHOICES[k].includes(v)) return { valid: false, error: `appearance.captionStyle.options.${k} must be one of: ${CAPTION_CHOICES[k].join(", ")}` };
+      } else if (CAPTION_FLAGS.includes(k)) {
+        if (typeof v !== "boolean") return { valid: false, error: `appearance.captionStyle.options.${k} must be true/false` };
+      } else {
+        return { valid: false, error: `appearance.captionStyle.options has an unknown option "${k}"` };
+      }
+    }
+  }
+  return { valid: true };
+}
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function fmtLoad(n) { return String(Math.round(n * 10) / 10); }
+function font(kind, text) {
+  if (kind === "bold") return `<b>${text}</b>`;
+  if (kind === "italic") return `<i>${text}</i>`;
+  if (kind === "code") return `<code>${text}</code>`;
+  return text;
+}
+
+/**
+ * data: {
+ *   title, timeStr, dateStr,
+ *   groups: [{ person, load|null, tasks: [{ task, icon, weight, fixed }] }],
+ *   considered: [{ name, load|null }],
+ *   warningTasks: [names],           // fixed-rotation tasks with no one set today
+ *   methodShort, methodFull: string|null   // complete lines, any emoji included
+ * }
+ */
+function buildCaptionFromStyle(data, style) {
+  const o = normalizeCaptionStyle(style).options;
+  const head = [];
+  if (o.header === "full") head.push(`\u{1F4CB} <b>${esc(data.title)}</b>  —  ${esc(data.timeStr)}, ${esc(data.dateStr)}`);
+  else if (o.header === "title") head.push(`\u{1F4CB} <b>${esc(data.title)}</b>`);
+  if (o.divider === "line") head.push("──────────");
+
+  const icons = { person: "\u{1F464} ", dot: "• ", arrow: "▸ ", none: "" };
+  const body = [];
+  let anyLoad = false;
+  data.groups.forEach((g, gi) => {
+    if (gi > 0 && o.spacing !== "tight") body.push("");
+    const load = o.loads && typeof g.load === "number" ? (anyLoad = true, `  <code>(${fmtLoad(g.load)})</code>`) : "";
+    body.push(`${icons[o.personIcon]}${font(o.personFont, esc(g.person))}${load}`);
+    for (const t of g.tasks) {
+      const ic = o.taskIcons ? `${t.icon ? t.icon : "•"} ` : "";
+      const w = o.weights && typeof t.weight === "number" ? ` ×${t.weight}` : "";
+      const r = o.rotationMarker && t.fixed ? " \u{1F501}" : "";
+      body.push(font(o.taskFont, `${ic}${esc(t.task)}${w}${r}`));
+    }
+  });
+
+  const foot = [];
+  const methodLine = o.method === "short" ? data.methodShort : o.method === "full" ? data.methodFull : null;
+  const naMode = o.notAssigned === "auto" ? (methodLine ? "none" : "names") : o.notAssigned;
+  if (naMode !== "none" && data.considered && data.considered.length > 0) {
+    const names = data.considered.map(c => {
+      const showLoad = naMode === "namesLoads" && typeof c.load === "number";
+      if (showLoad) anyLoad = true;
+      return esc(c.name) + (showLoad ? ` <code>(${fmtLoad(c.load)})</code>` : "");
+    });
+    foot.push(`<i>\u{1F4A4} Not assigned: ${names.join(", ")}</i>`);
+  }
+  if (data.warningTasks && data.warningTasks.length > 0) {
+    foot.push(`<i>⚠️ No rotation set today: ${esc(data.warningTasks.join(", "))}</i>`);
+  }
+  if (anyLoad) foot.push(`<i>Key: <code>(n)</code> starting load${o.weights ? " · <code>×n</code> task weight" : ""}</i>`);
+  if (methodLine) foot.push(`<i>${esc(methodLine)}</i>`);
+
+  const bodyText = body.join("\n");
+  const sections = [];
+  if (head.length) sections.push(head.join("\n"));
+  sections.push(o.quote ? `<blockquote>${bodyText}</blockquote>` : bodyText);
+  if (foot.length) sections.push(foot.join("\n"));
+  return sections.join(o.spacing === "airy" ? "\n\n" : "\n");
+}
+
+return { CAPTION_CHOICES, CAPTION_FLAGS, CAPTION_PRESETS, captionPreset, normalizeCaptionStyle, buildCaptionFromStyle };
+})();
+/* CAPTION-STYLE:END */
+
 const DEFAULT_APPEARANCE = {
   cardTitle: "Task Assignment",
   captionMode: "onPhoto", // "none" | "onPhoto" | "separateMessage"
@@ -639,7 +823,109 @@ const DEFAULT_APPEARANCE = {
   captionSilent: false,
   warnOnAutomatedRotationFallback: true,
   mainPageStartFromAutomatic: false,
+  captionStyle: CS.normalizeCaptionStyle(null),
+  mainPageRemember: { theme: true, people: true, tasks: true, rotation: true, history: true, method: false },
 };
+const MPM_ITEMS = [
+  ["theme", "Light / dark theme", "Otherwise the page opens in its default theme."],
+  ["people", "Which people are ticked", "Otherwise the default-ticked people."],
+  ["tasks", "Which tasks are ticked", "Otherwise the default-ticked tasks."],
+  ["rotation", "Fixed-rotation choice per task", "Otherwise each task's automatic-run rotation setting."],
+  ["history", "\u201CConsider previous days' history\u201D box", "Otherwise it starts ticked. Only matters when task memory is on."],
+  ["method", "Visitor's own fairness-method choice", "Off: every refresh returns to the default method."],
+];
+// ---- Caption style ----
+const CAP_LABELS = {
+  header: ["Header", { full: "Title + time + date", title: "Title only", none: "None" }],
+  divider: ["Divider under header", { none: "None", line: "Thin line" }],
+  spacing: ["Space between lines", { tight: "Tight", people: "Blank line between people", airy: "Airy (blank lines everywhere)" }],
+  personIcon: ["Person marker", { person: "\u{1F464} person", dot: "\u2022 dot", arrow: "\u25B8 arrow", none: "None" }],
+  personFont: ["Person font", { bold: "Bold", plain: "Plain", code: "Monospace", italic: "Italic" }],
+  taskFont: ["Task font", { code: "Monospace", plain: "Plain", italic: "Italic" }],
+  notAssigned: ["Not-assigned line", { auto: "Auto (only when no method line)", none: "Hidden", names: "Names", namesLoads: "Names + starting loads" }],
+  method: ["Method line", { none: "None", short: "Short (name + main setting)", full: "Full (all settings)" }],
+};
+const CAP_FLAG_LABELS = { taskIcons: "Task icons", rotationMarker: "\u{1F501} marker on fixed-rotation tasks", weights: "Task weights (\u00D7n)", loads: "Starting loads beside names", quote: "Wrap the assignment in a quote block" };
+function capSampleData() {
+  const ppl = (state.people || []).map(p => p.name).filter(Boolean);
+  const names = ppl.length >= 4 ? ppl.slice(0, 4) : ["Ava", "Ben", "Cara", "Dev"];
+  const tk = (state.tasks || []).filter(t => t.name).slice(0, 4).map(t => ({ task: t.name, icon: t.icon || "", weight: t.weight || 1 }));
+  const tasks = tk.length >= 3 ? tk : [{ task: "Cook", icon: "\u{1F373}", weight: 5 }, { task: "Shop", icon: "\u{1F6D2}", weight: 4 }, { task: "Clean", icon: "\u{1F9F9}", weight: 3 }, { task: "Trash", icon: "\u{1F5D1}", weight: 1 }];
+  const groups = [
+    { person: names[0], load: 3.2, tasks: [{ ...tasks[0], fixed: true }, { ...tasks[1] }] },
+    { person: names[1], load: 12.4, tasks: tasks.slice(2).map(t => ({ ...t })) },
+  ];
+  return { title: state.appearance.cardTitle || "Task Assignment", timeStr: "09:30", dateStr: "Aban 7", groups,
+    considered: [{ name: names[2], load: 21.5 }, { name: names[3], load: 8 }], warningTasks: [],
+    methodShort: "\u23F3 Method: The Fading Memory \u00B7 14 d \u00B7 t\u00BD 7 d",
+    methodFull: "\u23F3 Method: The Fading Memory \u00B7 last 14 days \u00B7 \u00F7 max possible \u00B7 half-life 7 d \u00B7 \u00D7 task total 13" };
+}
+function capCurrent() { return CS.normalizeCaptionStyle(state.appearance.captionStyle); }
+function capIsCustom(cur) {
+  const base = CS.captionPreset(cur.preset).options;
+  return Object.keys(base).some(k => base[k] !== cur.options[k]);
+}
+function renderCaptionStyle() {
+  const cur = capCurrent();
+  state.appearance.captionStyle = cur;
+  const data = capSampleData();
+  const custom = capIsCustom(cur);
+  const grid = document.getElementById("capStyleGrid");
+  grid.innerHTML = "";
+  CS.CAPTION_PRESETS.forEach((pr) => {
+    const sel = pr.id === cur.preset;
+    const card = document.createElement("label");
+    card.className = "cap-card" + (sel ? " sel" : "");
+    card.dataset.preset = pr.id;
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "capPreset"; radio.value = pr.id; radio.checked = sel;
+    radio.onchange = () => { if (radio.checked) { state.appearance.captionStyle = { preset: pr.id, options: { ...pr.options } }; renderCaptionStyle(); } };
+    const h = document.createElement("h4"); h.textContent = pr.name;
+    if (sel) { const b = document.createElement("span"); b.className = "tm-badge"; b.textContent = custom ? "Customized" : "Selected"; h.appendChild(b); }
+    const p = document.createElement("p"); p.textContent = pr.blurb;
+    const bubble = document.createElement("div"); bubble.className = "tg-bubble";
+    bubble.innerHTML = CS.buildCaptionFromStyle(data, sel ? cur : { preset: pr.id, options: pr.options });
+    card.append(radio, h, p, bubble);
+    grid.appendChild(card);
+  });
+  const opts = document.getElementById("capStyleOptions");
+  opts.innerHTML = "";
+  const set = (k, v) => { state.appearance.captionStyle = { preset: cur.preset, options: { ...cur.options, [k]: v } }; renderCaptionStyle(); };
+  Object.keys(CAP_LABELS).forEach((k) => {
+    const [label, choices] = CAP_LABELS[k];
+    const l = document.createElement("label"); l.append(label);
+    const sel = document.createElement("select"); sel.id = "cap_" + k;
+    CS.CAPTION_CHOICES[k].forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = choices[v]; sel.appendChild(o); });
+    sel.value = cur.options[k];
+    sel.onchange = () => set(k, sel.value);
+    l.appendChild(sel); opts.appendChild(l);
+  });
+  CS.CAPTION_FLAGS.forEach((k) => {
+    const l = document.createElement("label"); l.className = "chk";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "cap_" + k; cb.checked = !!cur.options[k];
+    cb.onchange = () => set(k, cb.checked);
+    l.append(cb, CAP_FLAG_LABELS[k]); opts.appendChild(l);
+  });
+  document.getElementById("capCustomNote").textContent = custom ? " Based on \u201C" + CS.captionPreset(cur.preset).name + "\u201D with your changes." : "";
+  document.getElementById("capResetBtn").onclick = () => { state.appearance.captionStyle = { preset: cur.preset, options: { ...CS.captionPreset(cur.preset).options } }; renderCaptionStyle(); };
+}
+
+function renderMainPageMemory() {
+  const box = document.getElementById("mpmList");
+  box.innerHTML = "";
+  const cur = { ...DEFAULT_APPEARANCE.mainPageRemember, ...(state.appearance.mainPageRemember || {}) };
+  state.appearance.mainPageRemember = cur;
+  MPM_ITEMS.forEach(([key, label, note]) => {
+    const l = document.createElement("label");
+    l.className = "check";
+    l.style.cssText = "display:flex;align-items:flex-start;gap:8px;margin-top:6px;";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "mpm_" + key; cb.checked = !!cur[key];
+    cb.onchange = () => { state.appearance.mainPageRemember[key] = cb.checked; };
+    const t = document.createElement("span"); t.textContent = label;
+    const sm = document.createElement("small"); sm.style.cssText = "display:block;color:var(--muted);"; sm.textContent = note; t.appendChild(sm);
+    l.append(cb, t); box.appendChild(l);
+  });
+}
 const CAPTION_MODE_OPTIONS = [
   { value: "none", label: "No caption" },
   { value: "onPhoto", label: "Caption on photo" },
@@ -1181,7 +1467,7 @@ const TM_METHODS = [
     how: "Starting loads are all zero, so each day's tasks are simply spread as evenly as possible. History is still recorded for when you want it.",
     pick: "You want no coupling between days, or you rely on fixed rotation alone.",
     watch: "Whoever shows up most carries the most; totals drift far apart over time.", params: [], uses: [] },
-  { id: "tally", name: "The Tally", tag: "Everyone ends up with the same total.", badge: "Default",
+  { id: "tally", name: "The Tally", tag: "Everyone ends up with the same total.",
     how: "Each remembered day adds that person's normalized load to their starting score, scaled to today's weights. Someone who carried a lot recently starts high and gets less. Combine (sum / average) and absent-day handling are set below.",
     pick: "Equal totals over the window matter most and people attend about equally.",
     watch: "A person back from a long absence has little recorded, so they receive a big catch-up share.",
@@ -1252,6 +1538,19 @@ function tmDotsEl(n) {
   return w;
 }
 
+// The card being looked at (details + its own settings). The DEFAULT method,
+// used on every day without a weekday override, is tm().method and carries
+// the "Default" badge; it only changes with the "Make default" button.
+let tmView = null;
+function tmViewId() { return tmView && TM_METHODS.some(x => x.id === tmView) ? tmView : tm().method; }
+function tmMakeDefault(id) {
+  tm().method = id;
+  tm().methodByWeekday = {};
+  tmView = id;
+  buildMethodGrid(); renderMethodDetail(); renderWeekdayMethods();
+  updateMemorySummaries(); updateMemoryWarnings(); updateMemoryPreview();
+}
+
 function buildMethodGrid() {
   const grid = document.getElementById("tmMethodGrid");
   grid.innerHTML = "";
@@ -1259,16 +1558,16 @@ function buildMethodGrid() {
     const label = document.createElement("label");
     label.className = "tm-mcard";
     const radio = document.createElement("input");
-    radio.type = "radio"; radio.name = "tmMethod"; radio.value = m.id; radio.checked = tm().method === m.id;
+    radio.type = "radio"; radio.name = "tmMethod"; radio.value = m.id; radio.checked = tmViewId() === m.id;
     radio.addEventListener("change", () => {
       if (!radio.checked) return;
-      tm().method = m.id;
-      renderMethodDetail(); updateMemorySummaries(); updateMemoryWarnings(); updateMemoryPreview();
+      tmView = m.id; // only looks at the method; "Make default" changes the default
+      renderMethodDetail();
     });
     const name = document.createElement("span");
     name.className = "tm-mname";
     name.textContent = m.name;
-    if (m.badge) { const b = document.createElement("span"); b.className = "tm-badge"; b.textContent = m.badge; name.appendChild(b); }
+    if (tm().method === m.id) { const b = document.createElement("span"); b.className = "tm-badge"; b.textContent = "Default"; name.appendChild(b); }
     const tag = document.createElement("span");
     tag.className = "tm-mtag"; tag.textContent = m.tag;
     label.append(radio, name, tag);
@@ -1345,9 +1644,33 @@ function daysRow(id) {
 }
 
 function renderMethodDetail() {
-  const m = tmMethod(tm().method);
+  const m = tmMethod(tmViewId());
   const box = document.getElementById("tmMethodDetail");
   box.innerHTML = "";
+  {
+    const bar = document.createElement("div");
+    bar.style.cssText = "display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;";
+    const nOver = Object.keys(tm().methodByWeekday || {}).length;
+    if (m.id === tm().method) {
+      const t = document.createElement("span"); t.className = "tm-badge"; t.textContent = "\u2713 Default for all days";
+      bar.appendChild(t);
+      if (nOver > 0) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "add-btn"; b.id = "tmClearOverridesBtn";
+        b.textContent = "Use it on every day (remove " + nOver + " weekday override" + (nOver === 1 ? "" : "s") + ")";
+        b.onclick = () => tmMakeDefault(m.id);
+        bar.appendChild(b);
+      }
+    } else {
+      const b = document.createElement("button"); b.type = "button"; b.className = "add-btn"; b.id = "tmMakeDefaultBtn";
+      b.textContent = "Make " + m.name + " the default for all days";
+      b.onclick = () => tmMakeDefault(m.id);
+      bar.appendChild(b);
+      const n = document.createElement("small"); n.style.color = "var(--muted)";
+      n.textContent = "Clears weekday overrides. Applies after you save.";
+      bar.appendChild(n);
+    }
+    box.appendChild(bar);
+  }
   const h = document.createElement("h3"); h.textContent = m.name + " — " + m.tag; box.appendChild(h);
   const how = document.createElement("div"); how.textContent = m.how; box.appendChild(how);
   const dl = document.createElement("dl");
@@ -1431,7 +1754,7 @@ function renderWeekdayMethods() {
     const lab = document.createElement("label");
     lab.append(wd);
     const sel = document.createElement("select");
-    const def = document.createElement("option"); def.value = ""; def.textContent = "default"; sel.appendChild(def);
+    const def = document.createElement("option"); def.value = ""; def.textContent = "default (" + tmMethod(tm().method).name + ")"; sel.appendChild(def);
     TM_METHODS.forEach((m) => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; sel.appendChild(o); });
     sel.value = (tm().methodByWeekday || {})[wd] || "";
     sel.onchange = () => {
@@ -1869,6 +2192,9 @@ function renderAll() {
   document.getElementById("warnOnAutomatedRotationFallbackInput").checked =
     state.appearance.warnOnAutomatedRotationFallback !== false;
   document.getElementById("mainPageStartInput").checked = !!state.appearance.mainPageStartFromAutomatic;
+  renderMainPageMemory();
+  renderCaptionStyle();
+  tmView = null;
   renderTaskMemory();
   renderHolidays();
 }
@@ -1941,6 +2267,8 @@ async function saveConfigToServer() {
       captionSilent: document.getElementById("captionSilentInput").checked,
       warnOnAutomatedRotationFallback: document.getElementById("warnOnAutomatedRotationFallbackInput").checked,
       mainPageStartFromAutomatic: document.getElementById("mainPageStartInput").checked,
+      mainPageRemember: { ...DEFAULT_APPEARANCE.mainPageRemember, ...(state.appearance.mainPageRemember || {}) },
+      captionStyle: capCurrent(),
     },
     automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
     holidays: readHolidays(),

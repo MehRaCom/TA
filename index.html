@@ -586,6 +586,7 @@
     <div id="todaySlider" class="today-slider"></div>
   </section>
 
+
 </div>
 
 <script>
@@ -612,6 +613,11 @@ const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
 
 const DEFAULT_DARK_MODE = true;
 const CONFIG_STORAGE_KEY = "taskAssignerConfig";
+
+// What this device keeps between visits is decided by the admin
+// (admin.html -> Main Page Memory) and arrives with the server config.
+const REMEMBER_DEFAULTS = { theme: true, people: true, tasks: true, rotation: true, history: true, method: false };
+let REMEMBER = { ...REMEMBER_DEFAULTS };
 
 /* ============================================================================= */
 
@@ -695,8 +701,21 @@ function loadOrInitConfig() {
   // Optional (admin "Appearance"): ignore the remembered People/Task ticks
   // and start from today's automatic setup. Only the theme is carried over
   // from the local copy; nothing is written back until the visitor acts.
-  if (START_FROM_AUTOMATIC) return buildAutomaticTodayConfig(cfg.darkMode);
-  return cfg;
+  if (START_FROM_AUTOMATIC) {
+    return buildAutomaticTodayConfig(REMEMBER.theme ? cfg.darkMode : DEFAULT_DARK_MODE);
+  }
+  // Per-item "remember on this device" choices: whatever isn't remembered
+  // comes from the defaults instead of the saved copy.
+  const base = buildDefaultConfig();
+  return {
+    darkMode: REMEMBER.theme ? cfg.darkMode : base.darkMode,
+    people: cfg.people.map((p, i) => (REMEMBER.people ? p : base.people[i])),
+    tasks: cfg.tasks.map((t, i) => ({
+      ...t,
+      enabled: REMEMBER.tasks ? t.enabled : base.tasks[i].enabled,
+      useFixedRotation: REMEMBER.rotation ? t.useFixedRotation : base.tasks[i].useFixedRotation,
+    })),
+  };
 }
 
 function saveConfig(cfg) {
@@ -1082,6 +1101,7 @@ function applyServerConfig(serverCfg) {
     activeDays: t.activeDays,
   }));
   START_FROM_AUTOMATIC = !!(serverCfg.appearance && serverCfg.appearance.mainPageStartFromAutomatic);
+  { const r = serverCfg.appearance && serverCfg.appearance.mainPageRemember; REMEMBER = { ...REMEMBER_DEFAULTS }; if (r && typeof r === "object") for (const k of Object.keys(REMEMBER_DEFAULTS)) if (typeof r[k] === "boolean") REMEMBER[k] = r[k]; }
   TASK_COLORS = {};
   (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
   FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
@@ -1098,7 +1118,14 @@ function applyServerConfig(serverCfg) {
 // saved config so it can never invalidate it. Defaults to ticked.
 const USE_HISTORY_STORAGE_KEY = "taskAssignerUseHistory";
 const METHOD_PICK_STORAGE_KEY = "taskAssignerMethodPick";
-function readMethodPick() { try { return localStorage.getItem(METHOD_PICK_STORAGE_KEY) || ""; } catch (e) { return ""; } }
+let methodPickNow = null; // chosen this visit; null = not read yet
+function readMethodPick() {
+  if (methodPickNow === null) {
+    methodPickNow = "";
+    if (REMEMBER.method) { try { methodPickNow = localStorage.getItem(METHOD_PICK_STORAGE_KEY) || ""; } catch (e) { /* non-fatal */ } }
+  }
+  return methodPickNow;
+}
 function chosenMethodId() {
   const act = TASK_MEMORY.activeNow;
   if (!act || !manualMethodPickVisible()) return "";
@@ -1153,7 +1180,7 @@ function renderMethodBox(fx, daysUsed) {
   } else if (useIt) {
     const pick = chosenMethodId();
     const o = pick && act.options ? act.options.find(x => x.id === pick) : null;
-    h = "<b>Fairness method:</b> " + esc(o ? o.name : act.name) + '<span class="chip">' + esc(o ? o.brief : act.brief) + "</span>" + (o ? " <i>(your choice, this browser)</i>" : "") + "<br>People who carried more on earlier days start heavier and get lighter tasks.";
+    h = "<b>Fairness method:</b> " + esc(o ? o.name : act.name) + '<span class="chip">' + esc(o ? o.brief : act.brief) + "</span>" + (o ? " <i>(your choice for this visit)</i>" : "") + "<br>People who carried more on earlier days start heavier and get lighter tasks.";
   } else {
     h = "<b>History is off for this assignment.</b> Everyone starts from zero. Tick \u201cConsider previous days\u2019 history\u201d to use <b>" + esc(act.name) + "</b>.";
   }
@@ -1166,7 +1193,8 @@ function renderMethodBox(fx, daysUsed) {
   box.innerHTML = h;
   const sel = document.getElementById("methodPick");
   if (sel) sel.onchange = () => {
-    try { localStorage.setItem(METHOD_PICK_STORAGE_KEY, sel.value); } catch (e) { /* non-fatal */ }
+    methodPickNow = sel.value;
+    if (REMEMBER.method) { try { localStorage.setItem(METHOD_PICK_STORAGE_KEY, sel.value); } catch (e) { /* non-fatal */ } }
     renderMethodBox(null, 0);
   };
   box.style.display = "";
@@ -1178,6 +1206,7 @@ function memoryEmoji() {
 
 function readUseHistoryPref() {
   try {
+    if (!REMEMBER.history) return true;
     return localStorage.getItem(USE_HISTORY_STORAGE_KEY) !== "0";
   } catch (e) {
     return true;
