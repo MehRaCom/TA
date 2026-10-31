@@ -468,6 +468,10 @@
   }
   .today-slider::-webkit-scrollbar { height: 8px; }
   .today-slider::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+  .today-card.final { border-color: #8b7cf6; box-shadow: 0 0 0 1px #8b7cf6 inset; }
+  .today-final-badge { font: 600 0.72rem var(--font-mono, monospace); color: #8b7cf6; margin-bottom: 4px; }
+  .today-legend { font-size: 0.75rem; color: var(--muted); margin: -6px 0 8px; }
+  .today-legend i { display: inline-block; width: 10px; height: 10px; border: 2px solid #8b7cf6; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
   .today-card {
     flex: 0 0 auto;
     scroll-snap-align: start;
@@ -503,6 +507,7 @@
   .method-box b { color: var(--text, inherit); }
   .method-box .chip { display: inline-block; font: 500 0.72rem var(--font-mono, monospace); border: 1px solid #6fc3b2; background: rgba(111,195,178,.15); border-radius: 999px; padding: 1px 9px; margin: 0 4px; color: inherit; }
   .method-box select { font: inherit; font-size: 0.82rem; margin-left: 4px; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: inherit; }
+  .method-box.warn { border-color: #ef5350; background: rgba(239,83,80,.08); }
   .method-box a { color: #4aa595; }
   .today-start-chip { margin-left: 8px; font: 500 0.7rem var(--font-mono, monospace); color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
   .today-card-person:first-of-type { margin-top: 0; }
@@ -583,6 +588,7 @@
 
   <section class="panel today-panel" id="todaySection" style="display:none;">
     <h2>Today's Assignments <span id="todayCount" class="hint"></span></h2>
+    <div class="today-legend" id="todayLegend" style="display:none;"><i></i>Final for today = the last assignment sent (or re-sent) to Telegram; it is the one the task memory counts.</div>
     <div id="todaySlider" class="today-slider"></div>
   </section>
 
@@ -1147,7 +1153,7 @@ function websiteIndicatorOn() {
 // server recorded for that assignment (null when memory wasn't used).
 function fairnessText(fx, daysUsed) {
   if (!fx || !websiteIndicatorOn() || TASK_MEMORY.reportShowMethod === false) return null;
-  let t = "Method: " + fx.line;
+  let t = (fx.nonDefault ? "\u26A0\uFE0F " : "") + "Method: " + fx.line;
   if (!(daysUsed > 0) && fx.methodId !== "none") t += " · no earlier days yet";
   return t;
 }
@@ -1172,15 +1178,17 @@ function renderMethodBox(fx, daysUsed) {
   if (!TASK_MEMORY_ENABLED || (!fx && !act)) { box.style.display = "none"; return; }
   const useIt = !document.getElementById("useHistoryCheck") || !manualHistoryBoxVisible() || document.getElementById("useHistoryCheck").checked;
   const esc = (t) => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  let h;
+  let h, warn = false;
   if (fx) {
-    h = "<b>Method used:</b> " + esc(fx.methodName || fx.methodId) + '<span class="chip">' + esc(fx.brief || "") + "</span>";
+    warn = !!fx.nonDefault;
+    h = (warn ? "\u26A0\uFE0F " : "") + "<b>Method used:</b> " + esc(fx.methodName || fx.methodId) + '<span class="chip">' + esc(fx.brief || "") + "</span>";
     if (!(daysUsed > 0) && fx.methodId !== "none") h += "<br>No earlier days were available, so everyone started from zero.";
     else if (daysUsed > 0) h += "<br>Based on the last " + daysUsed + " remembered day" + (daysUsed === 1 ? "" : "s") + ".";
   } else if (useIt) {
     const pick = chosenMethodId();
     const o = pick && act.options ? act.options.find(x => x.id === pick) : null;
-    h = "<b>Fairness method:</b> " + esc(o ? o.name : act.name) + '<span class="chip">' + esc(o ? o.brief : act.brief) + "</span>" + (o ? " <i>(your choice for this visit)</i>" : "") + "<br>People who carried more on earlier days start heavier and get lighter tasks.";
+    warn = !!o;
+    h = (o ? "\u26A0\uFE0F " : "") + "<b>Fairness method:</b> " + esc(o ? o.name : act.name) + '<span class="chip">' + esc(o ? o.brief : act.brief) + "</span>" + (o ? " <i>(your choice, not the default)</i>" : "") + "<br>People who carried more on earlier days start heavier and get lighter tasks.";
   } else {
     h = "<b>History is off for this assignment.</b> Everyone starts from zero. Tick \u201cConsider previous days\u2019 history\u201d to use <b>" + esc(act.name) + "</b>.";
   }
@@ -1191,6 +1199,7 @@ function renderMethodBox(fx, daysUsed) {
       act.options.filter(o => o.id !== act.id).map(o => '<option value="' + o.id + '"' + (o.id === cur ? " selected" : "") + ">" + esc(o.name) + "</option>").join("") + "</select></label>";
   }
   box.innerHTML = h;
+  box.classList.toggle("warn", warn);
   const sel = document.getElementById("methodPick");
   if (sel) sel.onchange = () => {
     methodPickNow = sel.value;
@@ -1316,12 +1325,19 @@ function esc(s) {
 
 function buildTodayCard(record) {
   const card = document.createElement("div");
-  card.className = "today-card";
+  card.className = "today-card" + (record.isFinal ? " final" : "");
 
   const time = document.createElement("div");
   time.className = "today-card-time";
   time.textContent = formatTehranTime(record.generatedAt);
   card.appendChild(time);
+
+  if (record.isFinal) {
+    const fin = document.createElement("div");
+    fin.className = "today-final-badge";
+    fin.textContent = "\u2713 Today's final \u00B7 last sent to Telegram " + formatTehranTime(record.finalSentAt || record.generatedAt);
+    card.appendChild(fin);
+  }
 
   if (record.rotationFallbackTasks && record.rotationFallbackTasks.length > 0) {
     const warn = document.createElement("div");
@@ -1411,6 +1427,12 @@ function renderTodaySlider() {
     count.textContent = `(${results.length})`;
     results.forEach((record) => slider.appendChild(buildTodayCard(record)));
     section.style.display = "";
+    const legend = document.getElementById("todayLegend");
+    const hasFinal = results.some(r => r.isFinal);
+    if (legend) legend.style.display = hasFinal && results.length > 1 ? "" : "none";
+    // With several cards, bring the final one into view.
+    const finalEl = slider.querySelector(".today-card.final");
+    if (finalEl && results.length > 1 && finalEl.scrollIntoView) finalEl.scrollIntoView({ block: "nearest", inline: "center" });
   } catch (err) {
     // Non-fatal.
   }

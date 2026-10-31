@@ -32,7 +32,21 @@
     font-family: var(--font-body);
     min-height: 100vh;
   }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
+  .topbar { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .topbar-in { max-width: 980px; margin: 0 auto; padding: 10px 20px 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; }
+  .topbar h1 { font-size: 1.15rem; margin: 0; }
+  .topbar #saveBar { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin: 0; }
+  .topbar #saveBar input { max-width: 240px; }
+  .tabs { grid-column: 1 / -1; display: flex; gap: 4px; overflow-x: auto; margin-top: 4px; }
+  .tab-btn { background: transparent; border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 9px 14px; color: var(--muted); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .topbar #status { grid-column: 1 / -1; min-height: 0; margin: 0 0 8px; padding: 6px 12px; font-size: 0.85rem; }
+  .topbar #status:empty { display: none; }
+  .tab-pane[hidden] { display: none; }
+  .wrap { max-width: 980px; }
+  h3.sub-h { margin: 18px 0 4px; font-size: 0.95rem; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
 
   h1 {
     font-family: var(--font-display);
@@ -306,21 +320,21 @@
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Task Assigner — Admin</h1>
-  <p class="subtitle">Edit people, tasks, fixed rotation, and appearance. Changes apply immediately — no code, no redeploy.</p>
-
-  <div class="panel">
-    <h2>Save</h2>
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="topbar-title"><h1>Task Assigner <span class="hint">Admin</span></h1></div>
     <div id="saveBar">
       <input type="password" id="passwordInput" placeholder="Admin password (needed only to save)">
       <button class="primary" id="saveBtn" type="button">Save Changes</button>
       <button id="reloadBtn" type="button">Reload from server</button>
     </div>
+    <nav class="tabs" role="tablist"><button type="button" class="tab-btn" data-tab="people" role="tab">People & tasks</button><button type="button" class="tab-btn" data-tab="schedule" role="tab">Schedule</button><button type="button" class="tab-btn" data-tab="fairness" role="tab">Fairness</button><button type="button" class="tab-btn" data-tab="telegram" role="tab">Telegram</button><button type="button" class="tab-btn" data-tab="website" role="tab">Website</button></nav>
     <div id="status"></div>
   </div>
-
-  <div class="panel">
+</div>
+<div class="wrap">
+<section class="tab-pane" id="tab-people" role="tabpanel" hidden>
+<div class="panel">
     <h2>People <span class="hint">who can be assigned tasks</span></h2>
     <div id="peopleRows"></div>
     <button class="add-btn" id="addPersonBtn" type="button">+ Add Person</button>
@@ -336,7 +350,9 @@
     </p>
   </div>
 
-  <div class="panel">
+  </section>
+<section class="tab-pane" id="tab-schedule" role="tabpanel" hidden>
+<div class="panel">
     <h2>Fixed Rotation <span class="hint">per task, per weekday</span></h2>
     <div id="fixedScheduleRows"></div>
     <p class="subtitle" style="margin-top:10px;">
@@ -410,7 +426,9 @@
     </div>
   </div>
 
-  <div class="panel" id="tmPanel">
+  </section>
+<section class="tab-pane" id="tab-fairness" role="tabpanel" hidden>
+<div class="panel" id="tmPanel">
     <h2>Task Memory <span class="hint">fairness across days</span></h2>
     <p class="subtitle" style="margin-bottom:10px;">
       Makes the random assignment remember previous days. Each day, the <b>last</b> assignment
@@ -586,32 +604,24 @@
     <div id="tmWarnings"></div>
   </div>
 
-  <div class="panel">
-    <h2>Appearance</h2>
+  </section>
+<section class="tab-pane" id="tab-telegram" role="tabpanel" hidden>
+<div class="panel">
+<h2>Card title</h2>
     <div class="row">
       <label style="min-width:120px;">Card title text</label>
       <input type="text" id="cardTitleInput" class="name-field">
     </div>
+  
   </div>
-
-  <div class="panel">
-    <h2>Telegram Message Options</h2>
+<div class="panel">
+    <h2>Message delivery <span class="hint">how the assignment reaches the group</span></h2>
     <p class="subtitle" style="margin-bottom:10px;">
       The caption lists who got what (grouped by person) alongside the image -- Telegram also
       shows this text as the push-notification preview when it's attached to the photo.
     </p>
     <div id="captionModeRow" class="caption-mode-row"></div>
 
-    <h3 style="margin:18px 0 4px;font-size:0.95rem;">Caption style <span class="hint">pick a look, then adjust anything; the selected card shows your exact result</span></h3>
-    <div id="capStyleGrid" class="cap-grid"></div>
-    <div class="cap-options" id="capStyleOptions"></div>
-    <div style="margin-top:8px;"><button class="add-btn" id="capResetBtn" type="button">Reset to the preset's own options</button>
-      <span class="hint" id="capCustomNote"></span></div>
-    <p class="subtitle" style="margin-top:6px;">
-      Fonts are Telegram's own (bold, italic, monospace, quote). Starting loads and the method line
-      only appear when Task Memory provides them. Telegram limits a caption on a photo to 1024
-      characters; longer text is trimmed from the end.
-    </p>
     <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="photoSilentInput">
       Send photo silently (no notification sound)
@@ -625,24 +635,24 @@
       Ignored when caption mode is "No caption" -- there's no separate caption notification to
       silence in that case.
     </p>
-    <label class="check" style="margin-top:14px;">
-      <input type="checkbox" id="mainPageStartInput">
-      Main page starts from today's automatic setup instead of the visitor's last-used ticks
-    </label>
-    <p class="subtitle" style="margin-top:4px;">
-      Off (default): the website remembers each browser's last People/Task ticks. On: every visit
-      starts with the people and tasks today's automatic run would use (default-ticked, present /
-      active today, with fixed rotation as configured). Only the ticks are affected; theme and
-      history checkbox keep their own memory.
+
+  </div>
+<div class="panel">
+    <h2>Caption style <span class="hint">pick a look, then adjust anything; the selected card shows your exact result</span></h2>
+    <div id="capStyleGrid" class="cap-grid"></div>
+    <div class="cap-options" id="capStyleOptions"></div>
+    <div style="margin-top:8px;"><button class="add-btn" id="capResetBtn" type="button">Reset to the preset's own options</button>
+      <span class="hint" id="capCustomNote"></span></div>
+    <p class="subtitle" style="margin-top:6px;">
+      Fonts are Telegram's own (bold, italic, monospace, quote). Starting loads and the method line
+      only appear when Task Memory provides them. Telegram limits a caption on a photo to 1024
+      characters; longer text is trimmed from the end.
     </p>
-    <h3 style="margin:16px 0 4px;font-size:0.95rem;">Main page memory <span class="hint">what each visitor's browser keeps and restores on every load</span></h3>
-    <p class="subtitle" style="margin-top:0;">
-      Ticked items are saved in the visitor's browser and come back on every visit or refresh.
-      Unticked items always start from the defaults set here. The people / tasks / rotation rows
-      have no effect while "starts from today's automatic setup" above is on.
-    </p>
-    <div id="mpmList"></div>
-    <label class="check" style="margin-top:14px;">
+
+  </div>
+<div class="panel">
+    <h2>Warnings</h2>
+    <label class="check">
       <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
       Show the "no fixed rotation today" warning for the automated run
     </label>
@@ -654,8 +664,32 @@
       assignment card / "Today's Assignments" slider. Manual Assign clicks are never affected --
       they always show the warning when it applies.
     </p>
-  </div>
 
+  </div>
+</section>
+<section class="tab-pane" id="tab-website" role="tabpanel" hidden>
+<div class="panel">
+    <h2>Main page <span class="hint">what visitors see when they open it</span></h2>
+    <label class="check" style="margin-top:14px;">
+      <input type="checkbox" id="mainPageStartInput">
+      Main page starts from today's automatic setup instead of the visitor's last-used ticks
+    </label>
+    <p class="subtitle" style="margin-top:4px;">
+      Off (default): the website remembers each browser's last People/Task ticks. On: every visit
+      starts with the people and tasks today's automatic run would use (default-ticked, present /
+      active today, with fixed rotation as configured). Only the ticks are affected; theme and
+      history checkbox keep their own memory.
+    </p>
+    <h3 class="sub-h">Main page memory <span class="hint">what each visitor's browser keeps and restores on every load</span></h3>
+    <p class="subtitle" style="margin-top:0;">
+      Ticked items are saved in the visitor's browser and come back on every visit or refresh.
+      Unticked items always start from the defaults set here. The people / tasks / rotation rows
+      have no effect while "starts from today's automatic setup" above is on.
+    </p>
+    <div id="mpmList"></div>
+
+  </div>
+</section>
 </div>
 
 <script>
@@ -685,30 +719,30 @@ const CAPTION_CHOICES = {
   notAssigned:    ["auto", "none", "names", "namesLoads"],
   method:         ["none", "short", "full"],
 };
-const CAPTION_FLAGS = ["taskIcons", "rotationMarker", "weights", "loads", "quote"];
+const CAPTION_FLAGS = ["taskIcons", "rotationMarker", "weights", "loads", "quote", "sectionLines"];
 
 const CAPTION_PRESETS = [
   { id: "classic", name: "Classic", blurb: "Title and time, people in bold, tasks in monospace, one short method line.",
     options: { header: "full", divider: "none", spacing: "tight", personIcon: "person", personFont: "bold", taskFont: "code",
-      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false, sectionLines: true } },
   { id: "minimal", name: "Minimal", blurb: "Just the title, who does what. Nothing else.",
     options: { header: "title", divider: "none", spacing: "tight", personIcon: "none", personFont: "bold", taskFont: "plain",
-      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "none", method: "none", quote: false } },
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "none", method: "none", quote: false, sectionLines: false } },
   { id: "airy", name: "Airy", blurb: "A divider and blank lines between people. Easy to read at a glance.",
     options: { header: "full", divider: "line", spacing: "airy", personIcon: "person", personFont: "bold", taskFont: "code",
-      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false, sectionLines: true } },
   { id: "quoted", name: "Quoted", blurb: "The assignment sits in a Telegram quote block, tasks in italics.",
     options: { header: "title", divider: "none", spacing: "people", personIcon: "arrow", personFont: "bold", taskFont: "italic",
-      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: true } },
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: true, sectionLines: true } },
   { id: "detailed", name: "Detailed", blurb: "Weights, starting loads, who was left out, and the full method line.",
     options: { header: "full", divider: "none", spacing: "people", personIcon: "person", personFont: "bold", taskFont: "code",
-      taskIcons: true, rotationMarker: true, weights: true, loads: true, notAssigned: "namesLoads", method: "full", quote: false } },
+      taskIcons: true, rotationMarker: true, weights: true, loads: true, notAssigned: "namesLoads", method: "full", quote: false, sectionLines: true } },
   { id: "ledger", name: "Ledger", blurb: "Everything in monospace, like a printed list.",
     options: { header: "title", divider: "line", spacing: "tight", personIcon: "dot", personFont: "code", taskFont: "code",
-      taskIcons: false, rotationMarker: true, weights: true, loads: false, notAssigned: "auto", method: "short", quote: false } },
+      taskIcons: false, rotationMarker: true, weights: true, loads: false, notAssigned: "auto", method: "short", quote: false, sectionLines: true } },
   { id: "plain", name: "Plain text", blurb: "No bold, italics or monospace. Safe for any client.",
     options: { header: "title", divider: "none", spacing: "people", personIcon: "dot", personFont: "plain", taskFont: "plain",
-      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false } },
+      taskIcons: true, rotationMarker: true, weights: false, loads: false, notAssigned: "auto", method: "short", quote: false, sectionLines: false } },
 ];
 
 const DEFAULT_PRESET = "classic";
@@ -787,7 +821,7 @@ function buildCaptionFromStyle(data, style) {
     }
   });
 
-  const foot = [];
+  const info = [];
   const methodLine = o.method === "short" ? data.methodShort : o.method === "full" ? data.methodFull : null;
   const naMode = o.notAssigned === "auto" ? (methodLine ? "none" : "names") : o.notAssigned;
   if (naMode !== "none" && data.considered && data.considered.length > 0) {
@@ -796,19 +830,22 @@ function buildCaptionFromStyle(data, style) {
       if (showLoad) anyLoad = true;
       return esc(c.name) + (showLoad ? ` <code>(${fmtLoad(c.load)})</code>` : "");
     });
-    foot.push(`<i>\u{1F4A4} Not assigned: ${names.join(", ")}</i>`);
+    info.push(`<i>\u{1F4A4} Not assigned: ${names.join(", ")}</i>`);
   }
   if (data.warningTasks && data.warningTasks.length > 0) {
-    foot.push(`<i>⚠️ No rotation set today: ${esc(data.warningTasks.join(", "))}</i>`);
+    info.push(`<i>\u26A0\uFE0F No rotation set today: ${esc(data.warningTasks.join(", "))}</i>`);
   }
-  if (anyLoad) foot.push(`<i>Key: <code>(n)</code> starting load${o.weights ? " · <code>×n</code> task weight" : ""}</i>`);
-  if (methodLine) foot.push(`<i>${esc(methodLine)}</i>`);
+  if (anyLoad) info.push(`<i>Key: <code>(n)</code> starting load${o.weights ? " \u00B7 <code>\u00D7n</code> task weight" : ""}</i>`);
 
   const bodyText = body.join("\n");
   const sections = [];
+  const line = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
   if (head.length) sections.push(head.join("\n"));
   sections.push(o.quote ? `<blockquote>${bodyText}</blockquote>` : bodyText);
-  if (foot.length) sections.push(foot.join("\n"));
+  // Optional thin lines between the people, the notes about who was
+  // considered, and the method description.
+  if (info.length) { if (o.sectionLines) sections.push(line); sections.push(info.join("\n")); }
+  if (methodLine) { if (o.sectionLines) sections.push(line); sections.push(`<i>${esc(methodLine)}</i>`); }
   return sections.join(o.spacing === "airy" ? "\n\n" : "\n");
 }
 
@@ -845,7 +882,7 @@ const CAP_LABELS = {
   notAssigned: ["Not-assigned line", { auto: "Auto (only when no method line)", none: "Hidden", names: "Names", namesLoads: "Names + starting loads" }],
   method: ["Method line", { none: "None", short: "Short (name + main setting)", full: "Full (all settings)" }],
 };
-const CAP_FLAG_LABELS = { taskIcons: "Task icons", rotationMarker: "\u{1F501} marker on fixed-rotation tasks", weights: "Task weights (\u00D7n)", loads: "Starting loads beside names", quote: "Wrap the assignment in a quote block" };
+const CAP_FLAG_LABELS = { taskIcons: "Task icons", rotationMarker: "\u{1F501} marker on fixed-rotation tasks", weights: "Task weights (\u00D7n)", loads: "Starting loads beside names", quote: "Wrap the assignment in a quote block", sectionLines: "Thin lines between the sections (people / not assigned / method)" };
 function capSampleData() {
   const ppl = (state.people || []).map(p => p.name).filter(Boolean);
   const names = ppl.length >= 4 ? ppl.slice(0, 4) : ["Ava", "Ben", "Cara", "Dev"];
@@ -2298,6 +2335,20 @@ document.getElementById("saveBtn").addEventListener("click", saveConfigToServer)
 document.getElementById("reloadBtn").addEventListener("click", loadConfig);
 
 loadConfig();
+
+(function () {
+  const btns = [...document.querySelectorAll(".tab-btn")];
+  const show = (id) => {
+    if (!btns.some(b => b.dataset.tab === id)) id = btns[0].dataset.tab;
+    btns.forEach(b => { const on = b.dataset.tab === id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.querySelectorAll(".tab-pane").forEach(p => { p.hidden = p.id !== "tab-" + id; });
+    try { history.replaceState(null, "", "#" + id); } catch (e) { /* file:// etc. */ }
+    try { window.scrollTo(0, 0); } catch (e) { /* non-browser */ }
+  };
+  btns.forEach(b => b.addEventListener("click", () => show(b.dataset.tab)));
+  window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+  show(location.hash.slice(1));
+})();
 </script>
 </body>
 </html>
