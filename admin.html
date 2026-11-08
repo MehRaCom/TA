@@ -177,6 +177,13 @@
 
   /* ---- Task Memory panel ---- */
   #tmBody.off { opacity: 0.5; }
+  details.help { margin: 2px 0 10px; }
+  details.help > summary { cursor: pointer; color: var(--muted); font-size: 0.78rem; list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+  details.help > summary::-webkit-details-marker { display: none; }
+  details.help > summary::before { content: "ⓘ"; }
+  details.help > summary:hover { color: var(--accent); }
+  details.help[open] > summary { margin-bottom: 6px; }
+  details.help > p { margin-top: 0; }
   details.tm-section {
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -287,8 +294,13 @@
   button.primary { background: var(--accent); color: #1c1c1f; padding: 12px 22px; font-size: 0.95rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .fixed-schedule-task { margin-bottom: 14px; }
-  .fixed-schedule-task > .task-label { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .fixed-schedule-task { margin-bottom: 4px; border-top: 1px solid var(--border, #444); padding: 8px 0; }
+  .fixed-schedule-task > .task-label { font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; list-style: none; }
+  .fixed-schedule-task > .task-label::-webkit-details-marker { display: none; }
+  .fixed-schedule-task > .task-label::before { content: "\25B8"; color: var(--muted); }
+  .fixed-schedule-task[open] > .task-label::before { content: "\25BE"; }
+  .fixed-schedule-task[open] > .task-label { margin-bottom: 8px; }
+  .fixed-schedule-task .fs-sum { margin-left: auto; font-weight: 400; font-size: 0.75rem; color: var(--muted); }
   .weekday-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -328,7 +340,7 @@
       <button class="primary" id="saveBtn" type="button">Save Changes</button>
       <button id="reloadBtn" type="button">Reload from server</button>
     </div>
-    <nav class="tabs" role="tablist"><button type="button" class="tab-btn" data-tab="people" role="tab">People & tasks</button><button type="button" class="tab-btn" data-tab="schedule" role="tab">Schedule</button><button type="button" class="tab-btn" data-tab="fairness" role="tab">Fairness</button><button type="button" class="tab-btn" data-tab="telegram" role="tab">Telegram</button><button type="button" class="tab-btn" data-tab="website" role="tab">Website</button></nav>
+    <nav class="tabs" role="tablist"><button type="button" class="tab-btn" data-tab="people" role="tab">People & tasks</button><button type="button" class="tab-btn" data-tab="rules" role="tab">Rules</button><button type="button" class="tab-btn" data-tab="schedule" role="tab">Schedule</button><button type="button" class="tab-btn" data-tab="fairness" role="tab">Fairness</button><button type="button" class="tab-btn" data-tab="telegram" role="tab">Telegram</button><button type="button" class="tab-btn" data-tab="website" role="tab">Website</button></nav>
     <div id="status"></div>
   </div>
 </div>
@@ -351,18 +363,59 @@
   </div>
 
   </section>
-<section class="tab-pane" id="tab-schedule" role="tabpanel" hidden>
+<section class="tab-pane" id="tab-rules" role="tabpanel" hidden>
 <div class="panel">
     <h2>Fixed Rotation <span class="hint">per task, per weekday</span></h2>
     <div id="fixedScheduleRows"></div>
-    <p class="subtitle" style="margin-top:10px;">
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:10px;">
       If a task's rotation is turned on but there's no schedule entry for today's weekday
       (or no schedule set at all), that task falls back to a normal random assignment for
       the day instead of being skipped -- the Telegram card shows a visible warning when
       this happens.
-    </p>
+    </p></details>
   </div>
+<div class="panel">
+    <h2>Rotation warnings <span class="hint">automatic run</span></h2>
+    <label class="check">
+      <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
+      Show the "no fixed rotation today" warning for the automated run
+    </label>
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:4px;">
+      When a task wants fixed rotation but today's schedule has no entry for it, the automated
+      (cron) run still falls back to a random assignment either way -- this only controls whether
+      that fallback is called out with a warning. Turn it off to suppress it everywhere the
+      automated run's result is shown: the Telegram image card/caption AND the website's
+      assignment card / "Today's Assignments" slider. Manual Assign clicks are never affected --
+      they always show the warning when it applies.
+    </p></details>
 
+  </div>
+<div class="panel" id="rulesPanel">
+    <h2>Task Limits <span class="hint">a person can only do chosen tasks</span></h2>
+    <label class="check"><input type="checkbox" id="rulesEnabled"> Enable task limits</label>
+    <div id="rulesBody">
+      <details class="help"><summary>About this</summary><p class="subtitle">A person with an active limit is only given the tasks ticked for them, on the days the limit holds. People without a limit can get anything. If a person has several active limits, only tasks allowed by all of them count. A fixed rotation always wins over a limit.</p></details>
+      <div id="rulesList"></div>
+      <button type="button" id="addRuleBtn" class="add-btn">+ Add limit</button>
+      <div style="margin-top:12px;">
+        <label class="check"><input type="checkbox" id="rulesManual"> Also apply to the website's Assign button</label>
+      </div>
+      <div style="margin-top:8px;">
+        <label class="check" style="display:none;"><input type="checkbox" id="rulesManualBox"> Let visitors tick/untick "Respect task limits" on the website</label>
+        <div class="subtitle" style="margin-top:4px;">Whether visitors can switch limits off, and its default, are set in <b>Website → Visitor options</b>.</div>
+      </div>
+      <div style="margin-top:8px;">
+        If nobody present is allowed a task:
+        <select id="rulesNoEligible">
+          <option value="fallback">assign it to anyone and show a warning</option>
+          <option value="unassigned">leave it unassigned and show a warning</option>
+        </select>
+      </div>
+      <div id="rulesWarnings" class="subtitle" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</section>
+<section class="tab-pane" id="tab-schedule" role="tabpanel" hidden>
   <div class="panel">
     <h2>Automatic Run Days <span class="hint">cron schedule, Tehran time</span></h2>
     <p class="subtitle">
@@ -375,11 +428,11 @@
 
   <div class="panel" id="holPanel">
     <h2>Iranian Holidays <span class="hint">automatic run only</span></h2>
-    <p class="subtitle">
+    <details class="help"><summary>About this</summary><p class="subtitle">
       When on, the automatic run first asks a holiday service whether today (Tehran date) is an
       official holiday in Iran and does nothing if it is. The manual Assign button is never affected.
       Weekday rules above still apply first.
-    </p>
+    </p></details>
     <label class="check" style="font-size:0.95rem;color:var(--text);">
       <input type="checkbox" id="holSkipInput">
       <span>Don't run the automatic assignment on Iranian holidays</span>
@@ -430,13 +483,13 @@
 <section class="tab-pane" id="tab-fairness" role="tabpanel" hidden>
 <div class="panel" id="tmPanel">
     <h2>Task Memory <span class="hint">fairness across days</span></h2>
-    <p class="subtitle" style="margin-bottom:10px;">
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-bottom:10px;">
       Makes the random assignment remember previous days. Each day, the <b>last</b> assignment
       the bot posted to Telegram counts as that day's final one. Everyone then starts today
       with a load built from what they did on those days, so whoever carried more recently
       gets fewer tasks. Every behavior below is its own switch. History is recorded all the
       time, even while this is off, so it's ready when you turn it on.
-    </p>
+    </p></details>
 
     <label class="check" style="font-size:0.95rem;color:var(--text);">
       <input type="checkbox" id="tmEnabledInput">
@@ -452,17 +505,18 @@
             <input type="checkbox" id="tmAutoRunInput">
             Use it in the automatic run
           </label>
-          <label class="check" style="margin-top:8px;">
+          <label class="check" style="margin-top:8px;display:none;">
             <input type="checkbox" id="tmManualBoxInput">
             Show "Consider previous days' history" next to the website's Assign button
           </label>
-          <label class="check" style="margin-top:6px;">
+          <label class="check" style="margin-top:6px;display:none;">
             <input type="checkbox" id="tmManualMethodInput">
             Let website visitors choose a different method for their own manual assignment (the default stays as set below)
           </label>
           <p class="subtitle" style="margin-top:6px;">
-            With the box hidden, manual runs never use history. With it shown, each person
-            decides per run (remembered per browser, ticked by default).
+            What visitors may choose on the website (history box, method pick, defaults and
+            remembering) is managed in <b>Website → Visitor options</b>. With the history box hidden there,
+            manual runs never use history.
           </p>
         </div>
       </details>
@@ -499,14 +553,14 @@
       <details class="tm-section" open>
         <summary>3 · Fairness method <span class="tm-summary-now" id="tmSumMethod"></span></summary>
         <div class="tm-section-body">
-          <p class="subtitle" style="margin-top:6px;">
+          <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:6px;">
             What is stored is plain fact (who was present, which tasks were on the table, their weights,
             who got what) and <b>never depends on the method</b>. The method only decides how those facts
             become each person's starting load today, so you can switch whenever you like and the whole past
             is used immediately. Meters come from a simulated 300-day replay of a 5-person team (30 runs, each
             method with its own sensible settings); more dots is better. The
             README explains each method in depth.
-          </p>
+          </p></details>
           <div class="tm-method-grid" id="tmMethodGrid" role="radiogroup" aria-label="Fairness method"></div>
           <div class="tm-method-detail" id="tmMethodDetail"></div>
 
@@ -607,7 +661,7 @@
   </section>
 <section class="tab-pane" id="tab-telegram" role="tabpanel" hidden>
 <div class="panel">
-<h2>Card title</h2>
+<h2>Card <span class="hint">the image posted to Telegram</span></h2>
     <div class="row">
       <label style="min-width:120px;">Card title text</label>
       <input type="text" id="cardTitleInput" class="name-field">
@@ -643,49 +697,39 @@
     <div class="cap-options" id="capStyleOptions"></div>
     <div style="margin-top:8px;"><button class="add-btn" id="capResetBtn" type="button">Reset to the preset's own options</button>
       <span class="hint" id="capCustomNote"></span></div>
-    <p class="subtitle" style="margin-top:6px;">
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:6px;">
       Fonts are Telegram's own (bold, italic, monospace, quote). Starting loads and the method line
       only appear when Task Memory provides them. Telegram limits a caption on a photo to 1024
       characters; longer text is trimmed from the end.
-    </p>
-
-  </div>
-<div class="panel">
-    <h2>Warnings</h2>
-    <label class="check">
-      <input type="checkbox" id="warnOnAutomatedRotationFallbackInput">
-      Show the "no fixed rotation today" warning for the automated run
-    </label>
-    <p class="subtitle" style="margin-top:4px;">
-      When a task wants fixed rotation but today's schedule has no entry for it, the automated
-      (cron) run still falls back to a random assignment either way -- this only controls whether
-      that fallback is called out with a warning. Turn it off to suppress it everywhere the
-      automated run's result is shown: the Telegram image card/caption AND the website's
-      assignment card / "Today's Assignments" slider. Manual Assign clicks are never affected --
-      they always show the warning when it applies.
-    </p>
+    </p></details>
 
   </div>
 </section>
 <section class="tab-pane" id="tab-website" role="tabpanel" hidden>
+<div class="panel" id="visitorOptionsPanel">
+    <h2>Visitor options <span class="hint">choices on the website's manual Assign</span></h2>
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:0;">Everything a visitor can switch for their own manual assignment, in one place. <b>Show</b> decides whether the option exists on the page; <b>Starts as</b> is what a visitor sees first (and what "Reset to defaults" returns to); <b>Remember</b> keeps their last choice in their browser, otherwise every visit starts from the default.</p></details>
+    <div id="voRows"></div>
+    <div id="voNotes" class="subtitle" style="margin-top:8px;"></div>
+  </div>
 <div class="panel">
-    <h2>Main page <span class="hint">what visitors see when they open it</span></h2>
+    <h2>Main page defaults <span class="hint">what the website starts with</span></h2>
     <label class="check" style="margin-top:14px;">
       <input type="checkbox" id="mainPageStartInput">
       Main page starts from today's automatic setup instead of the visitor's last-used ticks
     </label>
-    <p class="subtitle" style="margin-top:4px;">
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:4px;">
       Off (default): the website remembers each browser's last People/Task ticks. On: every visit
       starts with the people and tasks today's automatic run would use (default-ticked, present /
       active today, with fixed rotation as configured). Only the ticks are affected; theme and
       history checkbox keep their own memory.
-    </p>
+    </p></details>
     <h3 class="sub-h">Main page memory <span class="hint">what each visitor's browser keeps and restores on every load</span></h3>
-    <p class="subtitle" style="margin-top:0;">
+    <details class="help"><summary>About this</summary><p class="subtitle" style="margin-top:0;">
       Ticked items are saved in the visitor's browser and come back on every visit or refresh.
       Unticked items always start from the defaults set here. The people / tasks / rotation rows
       have no effect while "starts from today's automatic setup" above is on.
-    </p>
+    </p></details>
     <div id="mpmList"></div>
 
   </div>
@@ -695,7 +739,6 @@
 <script>
 // const WORKER_URL = "https://REPLACE-ME.workers.dev";
 const WORKER_URL = "https://task-assigner-telegram.mehra-co.workers.dev";
-
 const WEEKDAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 /* CAPTION-STYLE:BEGIN (copy of worker/caption-style.js, keep in sync) */
@@ -812,7 +855,7 @@ function buildCaptionFromStyle(data, style) {
   data.groups.forEach((g, gi) => {
     if (gi > 0 && o.spacing !== "tight") body.push("");
     const load = o.loads && typeof g.load === "number" ? (anyLoad = true, `  <code>(${fmtLoad(g.load)})</code>`) : "";
-    body.push(`${icons[o.personIcon]}${font(o.personFont, esc(g.person))}${load}`);
+    body.push(`${icons[o.personIcon]}${font(o.personFont, esc(g.person))}${g.limited ? " \u{1F512}" : ""}${load}`);
     for (const t of g.tasks) {
       const ic = o.taskIcons ? `${t.icon ? t.icon : "•"} ` : "";
       const w = o.weights && typeof t.weight === "number" ? ` ×${t.weight}` : "";
@@ -835,6 +878,8 @@ function buildCaptionFromStyle(data, style) {
   if (data.warningTasks && data.warningTasks.length > 0) {
     info.push(`<i>\u26A0\uFE0F No rotation set today: ${esc(data.warningTasks.join(", "))}</i>`);
   }
+  if (data.limitsOff) info.push("<i>\u{1F513}</i>");
+  for (const n of data.notes || []) info.push(`<i>\u26A0\uFE0F ${esc(n)}</i>`);
   if (anyLoad) info.push(`<i>Key: <code>(n)</code> starting load${o.weights ? " \u00B7 <code>\u00D7n</code> task weight" : ""}</i>`);
 
   const bodyText = body.join("\n");
@@ -861,15 +906,15 @@ const DEFAULT_APPEARANCE = {
   warnOnAutomatedRotationFallback: true,
   mainPageStartFromAutomatic: false,
   captionStyle: CS.normalizeCaptionStyle(null),
-  mainPageRemember: { theme: true, people: true, tasks: true, rotation: true, history: true, method: false },
+  mainPageRemember: { theme: true, people: true, tasks: true, rotation: true, history: true, method: false, limits: false },
+  mainPageDefaults: { history: true, limits: true },
 };
 const MPM_ITEMS = [
   ["theme", "Light / dark theme", "Otherwise the page opens in its default theme."],
   ["people", "Which people are ticked", "Otherwise the default-ticked people."],
   ["tasks", "Which tasks are ticked", "Otherwise the default-ticked tasks."],
   ["rotation", "Fixed-rotation choice per task", "Otherwise each task's automatic-run rotation setting."],
-  ["history", "\u201CConsider previous days' history\u201D box", "Otherwise it starts ticked. Only matters when task memory is on."],
-  ["method", "Visitor's own fairness-method choice", "Off: every refresh returns to the default method."],
+  // history / method / limits are managed in "Visitor options" above.
 ];
 // ---- Caption style ----
 const CAP_LABELS = {
@@ -947,6 +992,55 @@ function renderCaptionStyle() {
   document.getElementById("capResetBtn").onclick = () => { state.appearance.captionStyle = { preset: cur.preset, options: { ...CS.captionPreset(cur.preset).options } }; renderCaptionStyle(); };
 }
 
+function renderVisitorOptions() {
+  const box = document.getElementById("voRows");
+  box.innerHTML = "";
+  const ap = state.appearance;
+  ap.mainPageDefaults = { ...DEFAULT_APPEARANCE.mainPageDefaults, ...(ap.mainPageDefaults || {}) };
+  ap.mainPageRemember = { ...DEFAULT_APPEARANCE.mainPageRemember, ...(ap.mainPageRemember || {}) };
+  const tmOn = !!state.taskMemory.enabled, ar = state.assignmentRules;
+  const limitsOn = ar.enabled && ar.applyToManual !== false;
+  const rows = [
+    { name: "Consider previous days\u2019 history", note: "Lets a manual run start from earlier days.", avail: tmOn, why: "Task memory is off (Fairness tab).",
+      show: () => state.taskMemory.allowManualCheckbox !== false, setShow: v => { state.taskMemory.allowManualCheckbox = v; updateMemoryWarnings(); },
+      dflt: () => ap.mainPageDefaults.history, setDflt: v => { ap.mainPageDefaults.history = v; },
+      rem: () => ap.mainPageRemember.history, setRem: v => { ap.mainPageRemember.history = v; } },
+    { name: "Choose fairness method", note: "Visitor picks a different method for their own run.", avail: tmOn && state.taskMemory.allowManualCheckbox !== false, why: "Needs task memory on and the history option shown.",
+      show: () => state.taskMemory.allowManualMethod !== false, setShow: v => { state.taskMemory.allowManualMethod = v; },
+      dflt: null, dfltText: "day\u2019s method",
+      rem: () => ap.mainPageRemember.method, setRem: v => { ap.mainPageRemember.method = v; } },
+    { name: "Respect task limits", note: "Visitor may skip the limits for their own run.", avail: limitsOn, why: "Task limits are off or not applied to manual runs (Rules tab).",
+      show: () => ar.allowManualCheckbox !== false, setShow: v => { ar.allowManualCheckbox = v; },
+      dflt: () => ap.mainPageDefaults.limits, setDflt: v => { ap.mainPageDefaults.limits = v; },
+      rem: () => ap.mainPageRemember.limits, setRem: v => { ap.mainPageRemember.limits = v; } },
+  ];
+  const head = document.createElement("div");
+  head.style.cssText = "display:grid;grid-template-columns:minmax(0,2fr) 70px 110px 80px;gap:8px;font-size:12px;color:var(--muted);padding:4px 0;";
+  ["Option", "Show", "Starts as", "Remember"].forEach(t => { const d = document.createElement("div"); d.textContent = t; head.appendChild(d); });
+  box.appendChild(head);
+  rows.forEach((r) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:grid;grid-template-columns:minmax(0,2fr) 70px 110px 80px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--border,#444);" + (r.avail ? "" : "opacity:.5;");
+    const n = document.createElement("div");
+    n.innerHTML = "<div>" + escRule(r.name) + "</div><small style='color:var(--muted)'>" + escRule(r.avail ? r.note : r.why) + "</small>";
+    const mk = (get, set) => { const c = document.createElement("input"); c.type = "checkbox"; c.checked = !!get(); c.onchange = () => { set(c.checked); renderVisitorOptions(); }; return c; };
+    const sh = mk(r.show, r.setShow);
+    let df;
+    if (r.dflt) {
+      df = document.createElement("select");
+      [["true", "Ticked"], ["false", "Unticked"]].forEach(([v, l]) => { const o = document.createElement("option"); o.value = v; o.textContent = l; df.appendChild(o); });
+      df.value = String(!!r.dflt());
+      df.onchange = () => r.setDflt(df.value === "true");
+    } else { df = document.createElement("span"); df.style.color = "var(--muted)"; df.textContent = r.dfltText; }
+    const rm = mk(r.rem, r.setRem);
+    row.append(n, sh, df, rm);
+    box.appendChild(row);
+  });
+  const notes = [];
+  if (!ap.mainPageRemember.history && !ap.mainPageRemember.limits && !ap.mainPageRemember.method) notes.push("Nothing is remembered: each visit starts from the defaults above.");
+  document.getElementById("voNotes").textContent = notes.join(" ");
+}
+
 function renderMainPageMemory() {
   const box = document.getElementById("mpmList");
   box.innerHTML = "";
@@ -1011,7 +1105,7 @@ const DEFAULT_TASK_MEMORY = {
   indicatorEmoji: "\u23F3",
 };
 
-let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { ...DEFAULT_APPEARANCE }, automatedRunDays: WEEKDAYS.slice(0, 5), taskMemory: { ...DEFAULT_TASK_MEMORY }, holidays: { ...DEFAULT_HOLIDAYS } };
+let state = { people: [], tasks: [], fixedSchedules: {}, appearance: { ...DEFAULT_APPEARANCE }, automatedRunDays: WEEKDAYS.slice(0, 5), taskMemory: { ...DEFAULT_TASK_MEMORY }, holidays: { ...DEFAULT_HOLIDAYS }, assignmentRules: { enabled: false, applyToManual: true, onNoEligible: "fallback", rules: [] } };
 
 function setStatus(msg, kind) {
   const el = document.getElementById("status");
@@ -1051,9 +1145,11 @@ function renderPeople() {
             if (sched[day] === oldName) sched[day] = newName;
           });
         });
+        syncRuleNames(oldName, newName, "person");
         lastPersonName = newName;
       }
       renderFixedSchedules();
+      renderRules();
     });
 
     const enabledLabel = document.createElement("label");
@@ -1070,9 +1166,11 @@ function renderPeople() {
     removeBtn.type = "button";
     removeBtn.textContent = "Remove";
     removeBtn.addEventListener("click", () => {
-      state.people.splice(i, 1);
+      const gone = state.people.splice(i, 1)[0];
+      state.assignmentRules.rules = state.assignmentRules.rules.filter(r => !gone || r.person !== gone.name);
       renderPeople();
       renderFixedSchedules();
+      renderRules();
     });
 
     row.appendChild(nameInput);
@@ -1153,9 +1251,10 @@ function renderTasks() {
       if (newName !== oldName && Object.prototype.hasOwnProperty.call(state.fixedSchedules, oldName)) {
         state.fixedSchedules[newName] = state.fixedSchedules[oldName];
         delete state.fixedSchedules[oldName];
-        lastTaskName = newName;
       }
+      if (newName !== oldName) { syncRuleNames(oldName, newName, "task"); lastTaskName = newName; }
       renderFixedSchedules();
+      renderRules();
     });
 
     const weightInput = document.createElement("input");
@@ -1196,6 +1295,9 @@ function renderTasks() {
       const removedName = t.name;
       state.tasks.splice(i, 1);
       delete state.fixedSchedules[removedName];
+      syncRuleNames(removedName, null, "task");
+      state.assignmentRules.rules.forEach(r => { r.tasks = r.tasks.filter(x => x); });
+      renderRules();
       renderTasks();
       renderFixedSchedules();
     });
@@ -1287,13 +1389,24 @@ function renderFixedSchedules() {
     return;
   }
   state.tasks.forEach((t) => {
-    const block = document.createElement("div");
+    // One collapsible block per task, closed unless a rotation is in use,
+    // so a long task list doesn't become a wall of dropdowns.
+    const block = document.createElement("details");
     block.className = "fixed-schedule-task";
+    block.open = !!t.useInAutomatedRotation && false;
 
-    const label = document.createElement("div");
+    const label = document.createElement("summary");
     label.className = "task-label";
-    label.textContent = t.name;
+    const nameEl = document.createElement("span");
+    nameEl.textContent = t.name;
+    const sumEl = document.createElement("span");
+    sumEl.className = "fs-sum";
+    label.append(nameEl, sumEl);
     block.appendChild(label);
+    const refreshSum = () => {
+      const n = Object.keys(state.fixedSchedules[t.name] || {}).length;
+      sumEl.textContent = n ? (t.useInAutomatedRotation ? "rotation on" : "rotation off") + " \u00B7 " + n + "/7 days set" : "no rotation";
+    };
 
     const autoLabel = document.createElement("label");
     autoLabel.className = "check";
@@ -1317,6 +1430,7 @@ function renderFixedSchedules() {
     gapNote.style.color = "var(--rotation-accent, #d1392e)";
 
     function updateGapNote() {
+      refreshSum();
       // Only relevant once this task's rotation is actually turned on for
       // the automated run -- otherwise the automated run never consults
       // this schedule at all, so a gap in it means nothing yet.
@@ -1405,6 +1519,7 @@ function renderAutomatedRunDays() {
       // The fixed-rotation gap warnings and the task-memory warnings are
       // computed against automatedRunDays -- keep them in sync.
       renderFixedSchedules();
+      renderRulesWarnings();
       updateMemoryWarnings();
     });
     chipLabel.appendChild(cb);
@@ -2217,11 +2332,130 @@ function renderTaskMemory() {
 }
 
 // ---------------------------------------------------------------- Load / Save
+
+// ---------------------------------------------------------------- Task limits (assignmentRules)
+function ruleDays(r) {
+  return r.days.mode === "custom" ? r.days.weekdays : (state.automatedRunDays || []);
+}
+function syncRuleNames(oldName, newName, kind) {
+  const ar = state.assignmentRules;
+  if (!ar) return;
+  for (const r of ar.rules) {
+    if (kind === "person" && r.person === oldName) r.person = newName;
+    if (kind === "task") r.tasks = r.tasks.map(t => (t === oldName ? newName : t));
+  }
+}
+function renderRules() {
+  const ar = state.assignmentRules;
+  document.getElementById("rulesEnabled").checked = ar.enabled;
+  document.getElementById("rulesBody").style.display = ar.enabled ? "" : "none";
+  document.getElementById("rulesManual").checked = ar.applyToManual !== false;
+  document.getElementById("rulesManualBox").checked = ar.allowManualCheckbox !== false;
+  document.getElementById("rulesManualBox").disabled = ar.applyToManual === false;
+  document.getElementById("rulesNoEligible").value = ar.onNoEligible || "fallback";
+  const list = document.getElementById("rulesList");
+  list.innerHTML = "";
+  ar.rules.forEach((r, i) => {
+    const box = document.createElement("div");
+    box.className = "rule-card";
+    box.style.cssText = "border:1px solid var(--border,#ccc);border-radius:8px;padding:10px;margin-bottom:8px;";
+    const head = document.createElement("div");
+    head.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;";
+    const sel = document.createElement("select");
+    state.people.forEach(p => { const o = document.createElement("option"); o.value = p.name; o.textContent = p.name; sel.appendChild(o); });
+    sel.value = r.person;
+    sel.addEventListener("change", () => { r.person = sel.value; renderRulesWarnings(); });
+    const on = document.createElement("label"); on.className = "check";
+    const onCb = document.createElement("input"); onCb.type = "checkbox"; onCb.checked = r.enabled !== false;
+    onCb.addEventListener("change", () => { r.enabled = onCb.checked; renderRulesWarnings(); });
+    on.appendChild(onCb); on.appendChild(document.createTextNode(" active"));
+    const mode = document.createElement("select");
+    [["automatic", "on the automatic run days"], ["custom", "on custom days"]].forEach(([v, l]) => { const o = document.createElement("option"); o.value = v; o.textContent = l; mode.appendChild(o); });
+    mode.value = r.days.mode;
+    mode.addEventListener("change", () => { r.days.mode = mode.value; if (mode.value === "custom" && !r.days.weekdays.length) r.days.weekdays = (state.automatedRunDays || []).slice(); renderRules(); });
+    const del = document.createElement("button"); del.type = "button"; del.className = "remove-btn"; del.textContent = "Remove";
+    del.addEventListener("click", () => { ar.rules.splice(i, 1); renderRules(); });
+    head.append("Only tasks for", sel, mode, on, del);
+    box.appendChild(head);
+    if (r.days.mode === "custom") {
+      const row = document.createElement("div"); row.className = "presence-row";
+      WEEKDAYS.forEach(d => {
+        const l = document.createElement("label"); l.className = "presence-chip";
+        const c = document.createElement("input"); c.type = "checkbox"; c.checked = r.days.weekdays.includes(d);
+        l.classList.toggle("checked", c.checked);
+        c.addEventListener("change", () => {
+          r.days.weekdays = c.checked ? [...new Set([...r.days.weekdays, d])] : r.days.weekdays.filter(x => x !== d);
+          l.classList.toggle("checked", c.checked); renderRulesWarnings();
+        });
+        l.appendChild(c); l.appendChild(document.createTextNode(d.slice(0, 3))); row.appendChild(l);
+      });
+      box.appendChild(row);
+    }
+    const trow = document.createElement("div"); trow.className = "presence-row";
+    state.tasks.forEach(t => {
+      const l = document.createElement("label"); l.className = "presence-chip";
+      const c = document.createElement("input"); c.type = "checkbox"; c.checked = r.tasks.includes(t.name);
+      l.classList.toggle("checked", c.checked);
+      c.addEventListener("change", () => {
+        r.tasks = c.checked ? [...new Set([...r.tasks, t.name])] : r.tasks.filter(x => x !== t.name);
+        l.classList.toggle("checked", c.checked); renderRulesWarnings();
+      });
+      l.appendChild(c); l.appendChild(document.createTextNode(t.name)); trow.appendChild(l);
+    });
+    box.appendChild(trow);
+    list.appendChild(box);
+  });
+  renderRulesWarnings();
+}
+function escRule(x) { return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function renderRulesWarnings() {
+  const ar = state.assignmentRules, out = document.getElementById("rulesWarnings");
+  const msgs = [];
+  if (ar.enabled) {
+    for (const r of ar.rules) {
+      if (r.enabled !== false && r.tasks.length === 0) msgs.push(`${r.person} has a limit with no tasks ticked — they would never get anything on its days.`);
+      if (r.enabled !== false && r.days.mode === "custom" && r.days.weekdays.length === 0) msgs.push(`A limit for ${r.person} has no days selected — it never applies.`);
+      if (r.enabled !== false && r.days.mode === "automatic" && !(state.automatedRunDays || []).length) msgs.push(`A limit for ${r.person} follows the automatic run days, but none are set.`);
+    }
+    for (const day of WEEKDAYS) {
+      const allowed = new Map();
+      for (const r of ar.rules) {
+        if (r.enabled === false || !ruleDays(r).includes(day)) continue;
+        const set = new Set(r.tasks), prev = allowed.get(r.person);
+        allowed.set(r.person, prev ? new Set([...prev].filter(t => set.has(t))) : set);
+      }
+      if (!allowed.size) continue;
+      const present = state.people.filter(p => p.defaultEnabled !== false && (!p.presenceDays || p.presenceDays.includes(day)));
+      for (const t of state.tasks) {
+        if (t.enabled === false || (t.activeDays && !t.activeDays.includes(day))) continue;
+        if (state.fixedSchedules[t.name] && state.fixedSchedules[t.name][day]) continue;
+        if (present.length && !present.some(p => !allowed.has(p.name) || allowed.get(p.name).has(t.name))) {
+          msgs.push(`${day}: nobody present is allowed to do “${t.name}”.`);
+        }
+      }
+    }
+  }
+  out.innerHTML = msgs.length ? msgs.map(m => `<div class="warn-line">⚠️ ${escRule(m)}</div>`).join("") : "";
+}
+function initRules() {
+  const ar = () => state.assignmentRules;
+  document.getElementById("rulesEnabled").addEventListener("change", e => { ar().enabled = e.target.checked; renderRules(); renderVisitorOptions(); });
+  document.getElementById("rulesManual").addEventListener("change", e => { ar().applyToManual = e.target.checked; renderRules(); renderVisitorOptions(); });
+  document.getElementById("rulesManualBox").addEventListener("change", e => { ar().allowManualCheckbox = e.target.checked; });
+  document.getElementById("rulesNoEligible").addEventListener("change", e => { ar().onNoEligible = e.target.value; });
+  document.getElementById("addRuleBtn").addEventListener("click", () => {
+    if (!state.people.length) return;
+    ar().rules.push({ person: state.people[0].name, tasks: [], days: { mode: "automatic", weekdays: [] }, enabled: true });
+    renderRules();
+  });
+}
+
 function renderAll() {
   renderPeople();
   renderTasks();
   renderFixedSchedules();
   renderAutomatedRunDays();
+  renderRules();
   document.getElementById("cardTitleInput").value = state.appearance.cardTitle || "Task Assignment";
   renderCaptionModeOptions();
   document.getElementById("photoSilentInput").checked = !!state.appearance.photoSilent;
@@ -2230,6 +2464,7 @@ function renderAll() {
     state.appearance.warnOnAutomatedRotationFallback !== false;
   document.getElementById("mainPageStartInput").checked = !!state.appearance.mainPageStartFromAutomatic;
   renderMainPageMemory();
+  renderVisitorOptions();
   renderCaptionStyle();
   tmView = null;
   renderTaskMemory();
@@ -2262,6 +2497,7 @@ async function loadConfig() {
       automatedRunDays: Array.isArray(cfg.automatedRunDays) ? cfg.automatedRunDays : WEEKDAYS.slice(0, 5),
       taskMemory: mergeTaskMemory(cfg.taskMemory),
       holidays: { ...DEFAULT_HOLIDAYS, ...(cfg.holidays || {}) },
+      assignmentRules: { enabled: false, applyToManual: true, allowManualCheckbox: true, onNoEligible: "fallback", ...(cfg.assignmentRules || {}), rules: (cfg.assignmentRules && cfg.assignmentRules.rules) || [] },
     };
     renderAll();
     setStatus("Loaded current config.", "ok");
@@ -2305,10 +2541,12 @@ async function saveConfigToServer() {
       warnOnAutomatedRotationFallback: document.getElementById("warnOnAutomatedRotationFallbackInput").checked,
       mainPageStartFromAutomatic: document.getElementById("mainPageStartInput").checked,
       mainPageRemember: { ...DEFAULT_APPEARANCE.mainPageRemember, ...(state.appearance.mainPageRemember || {}) },
+      mainPageDefaults: { ...DEFAULT_APPEARANCE.mainPageDefaults, ...(state.appearance.mainPageDefaults || {}) },
       captionStyle: capCurrent(),
     },
     automatedRunDays: state.automatedRunDays || WEEKDAYS.slice(0, 5),
     holidays: readHolidays(),
+    assignmentRules: state.assignmentRules,
     taskMemory: { ...state.taskMemory, indicatorEmoji: state.taskMemory.indicatorEmoji.trim() || DEFAULT_TASK_MEMORY.indicatorEmoji },
   };
 
@@ -2334,6 +2572,7 @@ async function saveConfigToServer() {
 document.getElementById("saveBtn").addEventListener("click", saveConfigToServer);
 document.getElementById("reloadBtn").addEventListener("click", loadConfig);
 
+initRules();
 loadConfig();
 
 (function () {

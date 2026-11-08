@@ -127,6 +127,46 @@
     border-radius: 14px;
     padding: 16px;
   }
+  .options-panel { padding: 10px 16px; margin-top: 14px; }
+  .options-panel > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+  .options-panel > summary::-webkit-details-marker { display: none; }
+  .options-panel > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  .options-panel[open] > summary::before { transform: rotate(90deg); }
+  .opt-head { font-family: var(--font-display); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .opt-summary { flex: 1; font-size: 0.8rem; color: var(--muted); text-align: right; }
+  .opt-summary b { color: var(--text); font-weight: 600; }
+  .options-panel[open] > summary { padding-bottom: 6px; }
+  .legend-fold { margin: 14px 2px 0; }
+  .legend-fold > summary { cursor: pointer; font-size: 0.76rem; color: var(--muted); list-style: none; }
+  .legend-fold > summary::-webkit-details-marker { display: none; }
+  .legend-fold > summary::before { content: "ⓘ "; }
+  .legend-fold > summary:hover { color: var(--accent); }
+  .guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
+  .guide h4 { margin: 0 0 6px; font: 600 0.7rem var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .g-row { display: flex; align-items: center; gap: 9px; font-size: 0.8rem; color: var(--text); margin: 5px 0; }
+  .g-row > :first-child { flex: 0 0 34px; display: inline-flex; justify-content: center; }
+  .g-row.g-note { color: var(--muted); font-style: italic; }
+  .g-row .rotation-hint-badge { margin: 0; }
+  .g-row .tri-legend-dot { width: 13px; height: 13px; flex: 0 0 13px; margin: 0 4.5px; }
+  .g-warn { color: #ef5350; font-weight: 700; }
+  .g-final { color: #8b7cf6; font-weight: 700; }
+  .g-chip { flex: 0 0 auto !important; width: auto !important; padding: 1px 8px; border-radius: 999px; border: 1.5px solid var(--on-accent); color: var(--on-accent); font: 600 0.68rem var(--font-mono, monospace); }
+  .g-chip.warn { border-color: #ef5350; color: #ef5350; }
+  .legend-fold .tri-legend { margin-top: 8px; }
+  .lock-badge { display: inline-flex; align-items: center; margin-left: 6px; font-size: 1rem; }
+  .lk-svg { display: block; flex: none; }
+  .g-row .lk-svg, .g-row .lk-wrap { font-size: 1.15rem; }
+  .lk-svg { display: block; flex: none; }
+  .g-row { font-size: 0.8rem; }
+  .g-row .lk-svg, .g-row .lk-wrap { font-size: 1.15rem; }
+  .opt-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); cursor: pointer; }
+  .opt-row input { margin-top: 3px; }
+  .opt-text { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+  .opt-title { font-size: 0.95rem; }
+  .opt-hint { font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
+  .opt-tag { font-size: 0.7rem; color: var(--muted); white-space: nowrap; padding-top: 3px; }
+  .opt-tag button, .opt-reset { background: none; border: 0; color: var(--accent); font: inherit; font-size: 0.74rem; cursor: pointer; padding: 0; text-transform: none; letter-spacing: 0; }
+  .options-panel .method-box { margin: 0 0 4px 26px; border-top: 0; }
   .panel h2 {
     font-family: var(--font-display);
     font-size: 0.78rem;
@@ -558,33 +598,69 @@
 
     <section class="panel">
       <h2>Tasks &nbsp;/&nbsp; Assigned to</h2>
-      <div class="tri-legend">
-        <span><span class="tri-legend-dot off"></span>Off — excluded</span>
-        <span><span class="tri-legend-dot on"></span>On — random pool</span>
-        <span><span class="tri-legend-dot fixed"></span>Fixed rotation today</span>
-        <span><span class="rotation-hint-badge">🔁</span>Rotation available for this task</span>
-        <span class="tri-legend-hint">Click a task's checkbox to cycle through states</span>
-      </div>
+      
       <div id="taskList"></div>
     </section>
   </div>
 
+  <details class="legend-fold">
+        <summary>Guide: checkboxes &amp; icons</summary>
+        <div class="guide">
+          <div class="guide-col">
+            <h4>Checkboxes</h4>
+            <div class="g-row"><span class="tri-legend-dot off"></span><span>Off — excluded</span></div>
+            <div class="g-row"><span class="tri-legend-dot on"></span><span>On — random pool</span></div>
+            <div class="g-row"><span class="tri-legend-dot fixed"></span><span>Fixed rotation today</span></div>
+            <div class="g-row g-note">Click a task's checkbox to cycle through these.</div>
+          </div>
+          <div class="guide-col">
+            <h4>On this page</h4>
+            <div class="g-row"><span class="rotation-hint-badge">🔁</span><span>Task has a fixed rotation (before its name)</span></div>
+            <div class="g-row"><span class="lk-wrap"><svg class="lk-svg" viewBox="-2 -8 24 32" width="0.95em" height="1.25em" aria-hidden="true"><path d="M5 9 v-4 a5 5 0 0 1 10 0 v4" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg></span><span>Person is limited to certain tasks today (hover to see which)</span></div>
+            <div class="g-row"><span class="lk-wrap"><svg class="lk-svg" viewBox="-8 -8 30 32" width="1.17em" height="1.25em" aria-hidden="true"><g transform="rotate(-28 5 9)"><path d="M5 12 V1.5 a5 5 0 0 1 10 0 v3" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/></g><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg></span><span>Task limits were switched off for that assignment</span></div>
+            <div class="g-row"><span class="g-warn">⚠</span><span>Warning: something didn't go by the rules</span></div>
+            <div class="g-row"><span class="g-final">✓</span><span>Purple outline: today's final assignment</span></div>
+          </div>
+          <div class="guide-col">
+            <h4>On the Telegram card</h4>
+            <div class="g-row"><span class="lk-wrap"><svg class="lk-svg" viewBox="-2 -8 24 32" width="0.95em" height="1.25em" aria-hidden="true"><path d="M5 9 v-4 a5 5 0 0 1 10 0 v4" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg></span><span>Limited to certain tasks today (after the name)</span></div>
+            <div class="g-row"><span class="lk-wrap"><svg class="lk-svg" viewBox="-8 -8 30 32" width="1.17em" height="1.25em" aria-hidden="true"><g transform="rotate(-28 5 9)"><path d="M5 12 V1.5 a5 5 0 0 1 10 0 v3" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/></g><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg></span><span>Top corner: limits were switched off</span></div>
+            <div class="g-row"><span class="g-chip">Method</span><span>Fairness method used</span></div>
+            <div class="g-row"><span class="g-chip warn">Method</span><span>Red: not the day's default method</span></div>
+            <div class="g-row"><span class="g-warn">⚠</span><span>Same warnings as on this page</span></div>
+          </div>
+        </div>
+      </details>
+
+  <!-- Manual-run options, grouped in one place. Each row only exists when the
+       admin enables it; "default" is whatever the admin set, and a row that
+       differs from it offers a one-click return. -->
+  <details class="panel options-panel" id="optionsPanel" style="display:none;">
+    <summary><span class="opt-head">Assign options</span><span class="opt-summary" id="optSummary"></span><button type="button" class="opt-reset" id="optReset" style="display:none;">↺ Reset</button></summary>
+    <label class="opt-row" id="historyCheckWrap" style="display:none;">
+      <input type="checkbox" id="useHistoryCheck">
+      <span class="opt-text">
+        <span class="opt-title">Consider previous days' history</span>
+        <span class="opt-hint">Start from what everyone did on earlier days, so the load stays fair.</span>
+      </span>
+      <span class="opt-tag" id="historyTag"></span>
+    </label>
+    <div class="method-box" id="methodBox" style="display:none;"></div>
+    <label class="opt-row" id="limitsCheckWrap" style="display:none;">
+      <input type="checkbox" id="respectLimitsCheck" checked>
+      <span class="opt-text">
+        <span class="opt-title">Respect task limits</span>
+        <span class="opt-hint" id="limitsHint">Give limited people only the tasks they are allowed today.</span>
+      </span>
+      <span class="opt-tag" id="limitsTag"></span>
+    </label>
+  </details>
+
   <footer class="actions">
     <button class="primary" id="assignBtn" type="button">Assign</button>
     <button class="secondary" id="notifyAnywayBtn" type="button">Notify group anyway</button>
-    <!-- Only shown when the admin has switched on Task Memory. Ticked =
-         this manual Assign also starts everyone's load from what they did
-         on the previous days (the automatic run always does when it's on). -->
-    <label class="check" id="historyCheckWrap" style="display:none;">
-      <input type="checkbox" id="useHistoryCheck">
-      <span>Consider previous days' history</span>
-    </label>
     <span id="status"></span>
   </footer>
-  <!-- Which fairness method is used when "Consider previous days' history"
-       is on. Filled from the server config and, after Assign, from the
-       method the assignment really used. -->
-  <div class="method-box" id="methodBox" style="display:none;"></div>
 
   <section class="panel today-panel" id="todaySection" style="display:none;">
     <h2>Today's Assignments <span id="todayCount" class="hint"></span></h2>
@@ -622,8 +698,10 @@ const CONFIG_STORAGE_KEY = "taskAssignerConfig";
 
 // What this device keeps between visits is decided by the admin
 // (admin.html -> Main Page Memory) and arrives with the server config.
-const REMEMBER_DEFAULTS = { theme: true, people: true, tasks: true, rotation: true, history: true, method: false };
+const REMEMBER_DEFAULTS = { theme: true, people: true, tasks: true, rotation: true, history: true, method: false, limits: false };
 let REMEMBER = { ...REMEMBER_DEFAULTS };
+// What the manual-run options start as (admin: Website \u2192 Visitor options).
+let OPT_DEFAULTS = { history: true, limits: true };
 
 /* ============================================================================= */
 
@@ -800,8 +878,13 @@ function buildPeopleList() {
     input.addEventListener("change", persistCurrentConfig);
     const span = document.createElement("span");
     span.textContent = p.name;
+    const lk = document.createElement("span");
+    lk.className = "lock-badge person-lock";
+    lk.innerHTML = '<svg class="lk-svg" viewBox="-2 -8 24 32" width="0.95em" height="1.25em" aria-hidden="true"><path d="M5 9 v-4 a5 5 0 0 1 10 0 v4" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg>';
+    lk.style.display = "none";
     label.appendChild(input);
     label.appendChild(span);
+    label.appendChild(lk);   // lock sits right after the name, not at the start of the line
     container.appendChild(label);
     personChecks.push(input);
     personRowEls.push(label); // the label itself is the "row" for people
@@ -1107,12 +1190,30 @@ function applyServerConfig(serverCfg) {
     activeDays: t.activeDays,
   }));
   START_FROM_AUTOMATIC = !!(serverCfg.appearance && serverCfg.appearance.mainPageStartFromAutomatic);
+  { const d = serverCfg.appearance && serverCfg.appearance.mainPageDefaults; OPT_DEFAULTS = { history: true, limits: true }; if (d && typeof d === "object") for (const k of ["history", "limits"]) if (typeof d[k] === "boolean") OPT_DEFAULTS[k] = d[k]; }
   { const r = serverCfg.appearance && serverCfg.appearance.mainPageRemember; REMEMBER = { ...REMEMBER_DEFAULTS }; if (r && typeof r === "object") for (const k of Object.keys(REMEMBER_DEFAULTS)) if (typeof r[k] === "boolean") REMEMBER[k] = r[k]; }
   TASK_COLORS = {};
   (serverCfg.tasks || []).forEach(t => { if (t.color) TASK_COLORS[t.name] = t.color; });
   FIXED_SCHEDULES = serverCfg.fixedSchedules || {};
   TASK_MEMORY = (serverCfg.taskMemory && typeof serverCfg.taskMemory === "object") ? serverCfg.taskMemory : {};
   TASK_MEMORY_ENABLED = TASK_MEMORY.enabled === true;
+  {
+    const ar = serverCfg.assignmentRules || {};
+    LIMITS_BOX = ar.enabled === true && ar.applyToManual !== false && ar.allowManualCheckbox !== false && serverCfg.limitsToday === true;
+    // Names limited today (for the option's hint line).
+    const wd = tehranWeekdayName(new Date());
+    const auto = Array.isArray(serverCfg.automatedRunDays) ? serverCfg.automatedRunDays : [];
+    LIMITS_MAP = {};
+    for (const r of (ar.rules || [])) {
+      if (r.enabled === false) continue;
+      const on = r.days && r.days.mode === "custom" ? (r.days.weekdays || []).includes(wd) : auto.includes(wd);
+      if (!on) continue;
+      const set = new Set(r.tasks || []);
+      LIMITS_MAP[r.person] = LIMITS_MAP[r.person] ? LIMITS_MAP[r.person].filter(t => set.has(t)) : [...set];
+    }
+    LIMITS_PEOPLE = Object.keys(LIMITS_MAP);
+    LIMITS_ON = ar.enabled === true && ar.applyToManual !== false;
+  }
   TASK_MEMORY.activeNow = (TASK_MEMORY_ENABLED && serverCfg.taskMemoryActive) || null;
   if (typeof renderTodaySlider === "function") renderTodaySlider();
   return PEOPLE.length > 0 && TASKS.length > 0;
@@ -1139,6 +1240,23 @@ function chosenMethodId() {
   return act.options && act.options.some(o => o.id === v) && v !== act.id ? v : "";
 }
 function manualMethodPickVisible() { return manualHistoryBoxVisible() && TASK_MEMORY.allowManualMethod !== false; }
+let LIMITS_BOX = false;
+let LIMITS_PEOPLE = [];
+let LIMITS_MAP = {};
+let LIMITS_ON = false;
+// Locks in front of the people whose limits apply to the assignment that Assign would make right now.
+function refreshPeopleLocks() {
+  const cb = document.getElementById("respectLimitsCheck");
+  const applies = LIMITS_ON && LIMITS_PEOPLE.length > 0 && (!LIMITS_BOX || !cb || cb.checked);
+  PEOPLE.forEach((p, i) => {
+    const row = personRowEls[i]; if (!row) return;
+    const lk = row.querySelector(".person-lock"); if (!lk) return;
+    const tasks = LIMITS_MAP[p.name];
+    const show = applies && !!tasks;
+    lk.style.display = show ? "" : "none";
+    lk.title = show ? "Limited today to: " + (tasks.length ? tasks.join(", ") : "nothing") : "";
+  });
+}
 let TASK_MEMORY_ENABLED = false;
 let TASK_MEMORY = {};
 let START_FROM_AUTOMATIC = false;
@@ -1205,6 +1323,7 @@ function renderMethodBox(fx, daysUsed) {
     methodPickNow = sel.value;
     if (REMEMBER.method) { try { localStorage.setItem(METHOD_PICK_STORAGE_KEY, sel.value); } catch (e) { /* non-fatal */ } }
     renderMethodBox(null, 0);
+    refreshOptionMarks();
   };
   box.style.display = "";
 }
@@ -1213,13 +1332,60 @@ function memoryEmoji() {
   return e || "\u23F3";
 }
 
-function readUseHistoryPref() {
+const LIMITS_STORAGE_KEY = "taskAssignerRespectLimits";
+function readBoolPref(key, remember, dflt) {
   try {
-    if (!REMEMBER.history) return true;
-    return localStorage.getItem(USE_HISTORY_STORAGE_KEY) !== "0";
+    if (!remember) return dflt;
+    const v = localStorage.getItem(key);
+    return v === null ? dflt : v !== "0";
   } catch (e) {
-    return true;
+    return dflt;
   }
+}
+function readUseHistoryPref() { return readBoolPref(USE_HISTORY_STORAGE_KEY, REMEMBER.history, OPT_DEFAULTS.history); }
+function writeBoolPref(key, remember, v) {
+  if (!remember) return;
+  try { localStorage.setItem(key, v ? "1" : "0"); } catch (e) { /* non-fatal */ }
+}
+// Small "default" hints: a row that differs from the admin's default offers a one-click return.
+function refreshOptionMarks() {
+  const rows = [
+    ["useHistoryCheck", "historyTag", OPT_DEFAULTS.history, manualHistoryBoxVisible(), USE_HISTORY_STORAGE_KEY, REMEMBER.history],
+    ["respectLimitsCheck", "limitsTag", OPT_DEFAULTS.limits, LIMITS_BOX, LIMITS_STORAGE_KEY, REMEMBER.limits],
+  ];
+  let custom = false;
+  rows.forEach(([cbId, tagId, dflt, visible, key, remember]) => {
+    const cb = document.getElementById(cbId), tag = document.getElementById(tagId);
+    tag.innerHTML = "";
+    if (!visible) return;
+    if (cb.checked === dflt) { tag.textContent = "default"; return; }
+    custom = true;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "\u21BA default: " + (dflt ? "on" : "off");
+    b.onclick = (e) => { e.preventDefault(); cb.checked = dflt; writeBoolPref(key, remember, dflt); cb.dispatchEvent(new Event("change")); };
+    tag.appendChild(b);
+  });
+  // The method pick is a "customised" signal too.
+  if (typeof chosenMethodId === "function" && chosenMethodId()) custom = true;
+  {
+    const parts = [];
+    if (manualHistoryBoxVisible()) parts.push("History <b>" + (document.getElementById("useHistoryCheck").checked ? "on" : "off") + "</b>");
+    const mid = typeof chosenMethodId === "function" ? chosenMethodId() : "";
+    if (mid && TASK_MEMORY.activeNow && TASK_MEMORY.activeNow.options) { const o = TASK_MEMORY.activeNow.options.find(x => x.id === mid); if (o) parts.push("Method <b>" + o.name.replace(/[<>&]/g, "") + "</b>"); }
+    if (LIMITS_BOX) parts.push("Limits <b>" + (document.getElementById("respectLimitsCheck").checked ? "on" : "off") + "</b>");
+    document.getElementById("optSummary").innerHTML = parts.join(" \u00B7 ");
+  }
+  const r = document.getElementById("optReset");
+  r.style.display = custom ? "" : "none";
+  r.onclick = (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    rows.forEach(([cbId, , dflt, visible, key, remember]) => { if (!visible) return; const cb = document.getElementById(cbId); cb.checked = dflt; writeBoolPref(key, remember, dflt); });
+    methodPickNow = "";
+    if (REMEMBER.method) { try { localStorage.removeItem(METHOD_PICK_STORAGE_KEY); } catch (e) { /* non-fatal */ } }
+    renderMethodBox(null, 0);
+    refreshOptionMarks();
+  };
 }
 
 function setupHistoryCheckbox() {
@@ -1227,11 +1393,22 @@ function setupHistoryCheckbox() {
   const cb = document.getElementById("useHistoryCheck");
   wrap.style.display = manualHistoryBoxVisible() ? "" : "none";
   cb.checked = readUseHistoryPref();
+  document.getElementById("limitsCheckWrap").style.display = LIMITS_BOX ? "" : "none";
+  const lcb = document.getElementById("respectLimitsCheck");
+  lcb.checked = readBoolPref(LIMITS_STORAGE_KEY, REMEMBER.limits, OPT_DEFAULTS.limits);
   cb.onchange = () => {
-    try { localStorage.setItem(USE_HISTORY_STORAGE_KEY, cb.checked ? "1" : "0"); } catch (e) { /* non-fatal */ }
+    writeBoolPref(USE_HISTORY_STORAGE_KEY, true, cb.checked);
     renderMethodBox(null, 0);
+    refreshOptionMarks();
   };
+  if (LIMITS_PEOPLE.length) document.getElementById("limitsHint").textContent = "Limited today: " + LIMITS_PEOPLE.join(", ") + " \u2014 they only get the tasks they are allowed.";
+  lcb.onchange = () => { writeBoolPref(LIMITS_STORAGE_KEY, REMEMBER.limits, lcb.checked); refreshOptionMarks(); refreshPeopleLocks(); };
   renderMethodBox(null, 0);
+  // Show the panel only if at least one option is available to this visitor.
+  document.getElementById("optionsPanel").style.display =
+    (manualHistoryBoxVisible() || LIMITS_BOX) ? "" : "none";
+  refreshOptionMarks();
+  refreshPeopleLocks();
 }
 
 function buildUIFromCurrentConfig() {
@@ -1346,6 +1523,21 @@ function buildTodayCard(record) {
     card.appendChild(warn);
   }
 
+  if (record.limitsOffNotice) {
+    const off = document.createElement("div");
+    off.className = "today-card-time";
+    off.innerHTML = '<svg class="lk-svg" viewBox="-8 -8 30 32" width="1.17em" height="1.25em" aria-hidden="true"><g transform="rotate(-28 5 9)"><path d="M5 12 V1.5 a5 5 0 0 1 10 0 v3" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/></g><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg>';
+    off.title = "Task limits were switched off for this assignment";
+    card.appendChild(off);
+  }
+
+  (record.ruleNotes || []).forEach((n) => {
+    const w = document.createElement("div");
+    w.className = "today-card-warning";
+    w.textContent = "\u26A0 " + n;
+    card.appendChild(w);
+  });
+
   if (record.historyDaysUsed > 0 && websiteIndicatorOn()) {
     const note = document.createElement("div");
     note.className = "today-card-time";
@@ -1371,6 +1563,14 @@ function buildTodayCard(record) {
     const personEl = document.createElement("div");
     personEl.className = "today-card-person";
     personEl.textContent = person;
+    if (record.limited && record.limited[person]) {
+      const lk = document.createElement("span");
+      lk.innerHTML = '<svg class="lk-svg" viewBox="-2 -8 24 32" width="0.95em" height="1.25em" aria-hidden="true"><path d="M5 9 v-4 a5 5 0 0 1 10 0 v4" fill="none" stroke="#B7C0CC" stroke-width="2.8" stroke-linecap="round"/><rect x="0.6" y="9" width="19" height="13" rx="3.5" fill="#F5B83D" stroke="#C98A0B" stroke-width="1.2"/><circle cx="10" cy="14.6" r="2" fill="#6B4300"/><rect x="9.1" y="15" width="1.8" height="4.5" rx="0.9" fill="#6B4300"/></svg>';
+      lk.style.display = "inline-flex"; lk.style.marginLeft = "6px"; lk.style.verticalAlign = "middle";
+      lk.style.cursor = "help";
+      lk.title = "Limited to: " + record.limited[person].join(", ");
+      personEl.appendChild(lk);
+    }
     const sl = startLoadOf(record.fairness, record.historyDaysUsed, person);
     if (sl !== null) {
       const chip = document.createElement("span");
@@ -1481,11 +1681,16 @@ function renderAssignment(assignment) {
   });
 }
 
-function renderRotationFallbackNotice(rotationFallbackTasks) {
+function renderRotationFallbackNotice(rotationFallbackTasks, ruleNotes) {
   const el = document.getElementById("rotationFallbackNotice");
-  if (rotationFallbackTasks && rotationFallbackTasks.length > 0) {
-    el.textContent = "⚠ No fixed rotation set for today for: " +
-      rotationFallbackTasks.join(", ") + " — assigned randomly instead.";
+  const hasRot = rotationFallbackTasks && rotationFallbackTasks.length > 0;
+  const hasRules = ruleNotes && ruleNotes.length > 0;
+  if (hasRot || hasRules) {
+    el.textContent = [
+      hasRot ? "⚠ No fixed rotation set for today for: " + rotationFallbackTasks.join(", ") + " — assigned randomly instead." : "",
+      ...(hasRules ? ruleNotes.map(n => "⚠ " + n) : []),
+    ].filter(Boolean).join("\n");
+    el.style.whiteSpace = "pre-line";
     el.classList.add("show");
   } else {
     el.classList.remove("show");
@@ -1521,7 +1726,7 @@ function fixedStateTaskNamesSnapshot() {
 //       state when Assign was clicked.
 // Any task that fails this also has its live red-box preview
 // (.rotation-live-ok) cleared, since that preview is now known stale.
-function applyManualRotationFallbackResult(rotationFallbackTasks, fixedSelectedAtSubmit) {
+function applyManualRotationFallbackResult(rotationFallbackTasks, fixedSelectedAtSubmit, ruleNotesNow) {
   const weekday = tehranWeekdayName(new Date());
   const toShow = [];
   (rotationFallbackTasks || []).forEach((taskName) => {
@@ -1533,7 +1738,7 @@ function applyManualRotationFallbackResult(rotationFallbackTasks, fixedSelectedA
     toShow.push(taskName); // (c) already holds -- it's in rotationFallbackTasks
     taskRowEls[i].classList.remove("rotation-live-ok");
   });
-  renderRotationFallbackNotice(toShow);
+  renderRotationFallbackNotice(toShow, ruleNotesNow);
 }
 
 function formatTehranTime(isoString) {
@@ -1591,6 +1796,8 @@ async function callAssignEndpoint(forceNotify) {
     // on and the box is ticked; the Worker ignores it otherwise.
     useHistory: manualHistoryBoxVisible() && document.getElementById("useHistoryCheck").checked,
     methodOverride: chosenMethodId() || undefined,
+    // Only sent as false when the visitor unticks it; the Worker ignores it unless the admin allows it.
+    respectLimits: LIMITS_BOX && !document.getElementById("respectLimitsCheck").checked ? false : undefined,
   };
 
   const resp = await fetch(WORKER_URL + "/assign", {
@@ -1621,7 +1828,7 @@ async function onAssignClicked() {
     lastServerResult = data;
     renderAssignment(data.assignment);
     renderMethodBox(data.fairness && websiteIndicatorOn() ? data.fairness : null, data.historyDaysUsed || 0);
-    applyManualRotationFallbackResult(data.rotationFallbackTasks, fixedSnapshot);
+    applyManualRotationFallbackResult(data.rotationFallbackTasks, fixedSnapshot, data.ruleNotes);
     loadTodaySlider();
 
     if (data.status === "new") {
@@ -1655,7 +1862,7 @@ async function onNotifyAnywayClicked() {
     if (!data) { notifyBtn.disabled = false; return; }
     lastServerResult = data;
     renderAssignment(data.assignment);
-    applyManualRotationFallbackResult(data.rotationFallbackTasks, fixedSnapshot);
+    applyManualRotationFallbackResult(data.rotationFallbackTasks, fixedSnapshot, data.ruleNotes);
     setStatus("Reminder posted to the group.", "ok");
     notifyBtn.classList.remove("show");
   } catch (err) {
